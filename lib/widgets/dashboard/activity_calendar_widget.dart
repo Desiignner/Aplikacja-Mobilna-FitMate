@@ -1,3 +1,5 @@
+import 'package:fitmate/models/scheduled_workout.dart';
+import 'package:fitmate/services/app_data_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:fitmate/widgets/app_card.dart';
@@ -7,32 +9,46 @@ class ActivityCalendarWidget extends StatelessWidget {
   const ActivityCalendarWidget({super.key});
 
   @override
+  @override
   Widget build(BuildContext context) {
-    // Dane do symulacji
+    final AppDataService appData = AppDataService();
     final now = DateTime.now();
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
-    // Dzień tygodnia (poniedziałek=1, niedziela=7). Przesunięcie dla siatki zaczynającej się od niedzieli.
     final weekdayOfFirstDay = firstDayOfMonth.weekday % 7;
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final monthName = DateFormat.MMMM().format(now);
 
-    // Symulacja dni z treningiem
-    final workoutDays = {15, 21, 22, 23, 24};
+    return ValueListenableBuilder<Map<String, double>>(
+      valueListenable: appData
+          .statistics, // Rebuild when stats change (implies workouts changed)
+      builder: (context, stats, child) {
+        // Get completed workout days for current month
+        final workoutDays = appData.scheduledWorkouts
+            .where((w) =>
+                w.status == WorkoutStatus.completed &&
+                w.date.year == now.year &&
+                w.date.month == now.month)
+            .map((w) => w.date.day)
+            .toSet();
 
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('$monthName Activity', style: const TextStyle(color: Colors.white)),
-          const SizedBox(height: 12),
-          _buildCalendarGrid(now, weekdayOfFirstDay, daysInMonth, workoutDays),
-        ],
-      ),
+        return AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$monthName Activity',
+                  style: const TextStyle(color: Colors.white)),
+              const SizedBox(height: 12),
+              _buildCalendarGrid(
+                  now, weekdayOfFirstDay, daysInMonth, workoutDays),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildCalendarGrid(
-      DateTime now, int weekdayOfFirstDay, int daysInMonth, Set<int> workoutDays) {
+  Widget _buildCalendarGrid(DateTime now, int weekdayOfFirstDay,
+      int daysInMonth, Set<int> workoutDays) {
     const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return Column(
@@ -40,7 +56,9 @@ class ActivityCalendarWidget extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: daysOfWeek
-              .map((day) => Text(day, style: const TextStyle(color: secondaryTextColor, fontSize: 12)))
+              .map((day) => Text(day,
+                  style:
+                      const TextStyle(color: secondaryTextColor, fontSize: 12)))
               .toList(),
         ),
         const SizedBox(height: 8),
@@ -55,7 +73,8 @@ class ActivityCalendarWidget extends StatelessWidget {
           itemCount: daysInMonth + weekdayOfFirstDay,
           itemBuilder: (context, index) {
             if (index < weekdayOfFirstDay) {
-              return const SizedBox.shrink(); // Puste miejsce przed pierwszym dniem miesiąca
+              return const SizedBox
+                  .shrink(); // Puste miejsce przed pierwszym dniem miesiąca
             }
 
             final day = index - weekdayOfFirstDay + 1;
@@ -74,8 +93,11 @@ class ActivityCalendarWidget extends StatelessWidget {
                 '$day',
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: isWorkoutDay ? FontWeight.bold : FontWeight.normal,
-                  decoration: isWorkoutDay ? TextDecoration.underline : TextDecoration.none,
+                  fontWeight:
+                      isWorkoutDay ? FontWeight.bold : FontWeight.normal,
+                  decoration: isWorkoutDay
+                      ? TextDecoration.underline
+                      : TextDecoration.none,
                   decorationColor: Colors.white,
                   decorationThickness: 2,
                 ),

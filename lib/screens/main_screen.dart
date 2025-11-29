@@ -15,12 +15,12 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-static const List<Widget> _widgetOptions = <Widget>[
-  const DashboardScreen(),
-  const StatsScreen(),
-  const CalendarScreen(),
-  const WorkoutsScreen(),
-];
+  static const List<Widget> _widgetOptions = <Widget>[
+    const DashboardScreen(),
+    const StatsScreen(),
+    const CalendarScreen(),
+    const WorkoutsScreen(),
+  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -51,12 +51,14 @@ static const List<Widget> _widgetOptions = <Widget>[
             label: 'Stats',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today_outlined, color: secondaryTextColor),
+            icon:
+                Icon(Icons.calendar_today_outlined, color: secondaryTextColor),
             activeIcon: Icon(Icons.calendar_today, color: primaryColor),
             label: 'Calendar',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.fitness_center_outlined, color: secondaryTextColor),
+            icon:
+                Icon(Icons.fitness_center_outlined, color: secondaryTextColor),
             activeIcon: Icon(Icons.fitness_center, color: primaryColor),
             label: 'Workouts',
           ),

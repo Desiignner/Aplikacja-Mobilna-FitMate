@@ -1,7 +1,7 @@
 import 'package:fitmate/models/exercise.dart';
 import 'package:fitmate/models/plan.dart';
 import 'package:fitmate/models/scheduled_workout.dart';
-import 'package:fitmate/screens/create_plan_screen.dart'; 
+import 'package:fitmate/screens/create_plan_screen.dart';
 import 'package:fitmate/services/app_data_service.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:flutter/material.dart';
@@ -22,28 +22,24 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
   @override
   void initState() {
     super.initState();
-
     currentWorkout = widget.workout;
   }
 
   void _navigateToEditScreen() async {
-
     final planToEdit = _appData.plans.firstWhere(
       (p) => p.id == currentWorkout.planId,
-      orElse: () => Plan(id: -1, name: 'Not Found'), 
+      orElse: () => Plan(id: '', name: 'Not Found'),
     );
 
-    if (planToEdit.id == -1) return;
-
+    if (planToEdit.id.isEmpty) return;
 
     final updatedPlan = await Navigator.of(context).push<Plan>(
-      MaterialPageRoute(builder: (context) => CreatePlanScreen(planToEdit: planToEdit)),
+      MaterialPageRoute(
+          builder: (context) => CreatePlanScreen(planToEdit: planToEdit)),
     );
 
     if (updatedPlan != null && mounted) {
-
       _appData.updatePlan(updatedPlan);
-
       setState(() {
         currentWorkout.planName = updatedPlan.name;
         currentWorkout.exercises = updatedPlan.exercises;
@@ -58,7 +54,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
         title: Text(currentWorkout.planName),
         backgroundColor: cardBackgroundColor,
         actions: [
-          // Przycisk "Edytuj"
           IconButton(
             icon: const Icon(Icons.edit, color: primaryColor),
             onPressed: _navigateToEditScreen,
@@ -106,17 +101,21 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.calendar_today, color: secondaryTextColor, size: 18),
+                const Icon(Icons.calendar_today,
+                    color: secondaryTextColor, size: 18),
                 const SizedBox(width: 8),
-                Text(DateFormat.yMMMMd().format(currentWorkout.date), style: const TextStyle(color: Colors.white, fontSize: 16)),
+                Text(DateFormat.yMMMMd().format(currentWorkout.date),
+                    style: const TextStyle(color: Colors.white, fontSize: 16)),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                const Icon(Icons.access_time_filled, color: secondaryTextColor, size: 18),
+                const Icon(Icons.access_time_filled,
+                    color: secondaryTextColor, size: 18),
                 const SizedBox(width: 8),
-                Text('Completed at ${currentWorkout.time}', style: const TextStyle(color: Colors.white, fontSize: 16)),
+                Text('Completed at ${currentWorkout.time}',
+                    style: const TextStyle(color: Colors.white, fontSize: 16)),
               ],
             ),
           ],
@@ -125,7 +124,6 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
     );
   }
 }
-
 
 class _ExerciseSummaryCard extends StatelessWidget {
   final Exercise exercise;
@@ -141,13 +139,23 @@ class _ExerciseSummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(exercise.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(exercise.name,
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 12),
             const Row(
               children: [
-                Expanded(child: Text('Set', style: TextStyle(color: secondaryTextColor))),
-                Expanded(child: Text('Reps', style: TextStyle(color: secondaryTextColor))),
-                Expanded(child: Text('Weight', style: TextStyle(color: secondaryTextColor))),
+                Expanded(
+                    child: Text('Set',
+                        style: TextStyle(color: secondaryTextColor))),
+                Expanded(
+                    child: Text('Reps',
+                        style: TextStyle(color: secondaryTextColor))),
+                Expanded(
+                    child: Text('Weight',
+                        style: TextStyle(color: secondaryTextColor))),
               ],
             ),
             const Divider(color: secondaryTextColor),
@@ -156,9 +164,15 @@ class _ExerciseSummaryCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Row(
                   children: [
-                    Expanded(child: Text('${i + 1}', style: const TextStyle(color: Colors.white))),
-                    Expanded(child: Text(exercise.sets[i].reps.toString(), style: const TextStyle(color: Colors.white))),
-                    Expanded(child: Text('${exercise.sets[i].weight} kg', style: const TextStyle(color: Colors.white))),
+                    Expanded(
+                        child: Text('${i + 1}',
+                            style: const TextStyle(color: Colors.white))),
+                    Expanded(
+                        child: Text(exercise.sets[i].reps.toString(),
+                            style: const TextStyle(color: Colors.white))),
+                    Expanded(
+                        child: Text('${exercise.sets[i].weight} kg',
+                            style: const TextStyle(color: Colors.white))),
                   ],
                 ),
               ),

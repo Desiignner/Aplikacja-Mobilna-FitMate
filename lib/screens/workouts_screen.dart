@@ -16,61 +16,82 @@ class WorkoutsScreen extends StatefulWidget {
 class _WorkoutsScreenState extends State<WorkoutsScreen> {
   final AppDataService _appData = AppDataService();
 
+  @override
+  void initState() {
+    super.initState();
+    _loadPlans();
+  }
+
+  Future<void> _loadPlans() async {
+    await _appData.loadPlans();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   void _navigateAndAddPlan() async {
     final newPlan = await Navigator.of(context).push<Plan>(
       MaterialPageRoute(builder: (context) => const CreatePlanScreen()),
     );
     if (newPlan != null) {
-      setState(() {
-        _appData.addPlan(newPlan);
-      });
+      await _appData.addPlan(newPlan);
+      setState(() {});
     }
   }
 
   void _startWorkout(Plan plan) async {
-    final newWorkout = _appData.scheduleWorkout(plan, DateTime.now());
-    
+    final newWorkout = await _appData.scheduleWorkout(plan, DateTime.now());
+
+    if (!mounted) return;
+
     final bool? workoutFinished = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (context) => ActiveWorkoutScreen(workout: newWorkout)),
+      MaterialPageRoute(
+          builder: (context) => ActiveWorkoutScreen(workout: newWorkout)),
     );
 
     if (workoutFinished == true && mounted) {
-      setState(() {
-        _appData.completeWorkout(newWorkout, context);
-      });
+      await _appData.completeWorkout(newWorkout, context);
+      setState(() {});
     }
   }
 
-  void _deletePlan(Plan plan) {
-    setState(() {
-      _appData.deletePlan(plan);
-    });
+  void _deletePlan(Plan plan) async {
+    await _appData.deletePlan(plan);
+    setState(() {});
+
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("'${plan.name}' deleted."),
-        action: SnackBarAction(label: 'UNDO', onPressed: () {
-          setState(() {
-            _appData.addPlan(plan);
-          });
-        }),
+        action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () async {
+              await _appData.addPlan(plan);
+              setState(() {});
+            }),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-
     final allPlans = _appData.plans;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Workout Plans'),
         actions: [
-          IconButton(onPressed: _navigateAndAddPlan, icon: const Icon(Icons.add, color: primaryColor, size: 30)),
+          IconButton(
+              onPressed: _navigateAndAddPlan,
+              icon: const Icon(Icons.add, color: primaryColor, size: 30)),
         ],
       ),
       body: allPlans.isEmpty
-          ? const Center(child: Text('No workout plans yet.\nPress "+" to add one!', textAlign: TextAlign.center, style: TextStyle(color: secondaryTextColor, fontSize: 18)))
+          ? const Center(
+              child: Text('No workout plans yet.\nPress "+" to add one!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: secondaryTextColor, fontSize: 18)))
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: allPlans.length,
@@ -87,7 +108,8 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                     margin: const EdgeInsets.only(bottom: 16),
                     child: const Icon(Icons.delete, color: Colors.white),
                   ),
-                  child: _WorkoutPlanCard(plan: plan, onStart: () => _startWorkout(plan)),
+                  child: _WorkoutPlanCard(
+                      plan: plan, onStart: () => _startWorkout(plan)),
                 );
               },
             ),
@@ -103,8 +125,9 @@ class _WorkoutPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-  
-    final description = plan.description.isNotEmpty ? plan.description : "${plan.exercises.length} exercises";
+    final description = plan.description.isNotEmpty
+        ? plan.description
+        : "${plan.exercises.length} exercises";
     return Card(
       color: cardBackgroundColor,
       margin: const EdgeInsets.only(bottom: 16),
@@ -114,16 +137,30 @@ class _WorkoutPlanCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(plan.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(plan.name,
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
             const SizedBox(height: 12),
-            Text(description, style: const TextStyle(color: secondaryTextColor, fontSize: 16)),
+            Text(description,
+                style:
+                    const TextStyle(color: secondaryTextColor, fontSize: 16)),
             const SizedBox(height: 20),
             Align(
               alignment: Alignment.centerRight,
               child: ElevatedButton(
                 onPressed: onStart,
-                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: mainBackgroundColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12)),
-                child: const Text('Start Workout', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: mainBackgroundColor,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 12)),
+                child: const Text('Start Workout',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],

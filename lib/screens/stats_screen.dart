@@ -17,6 +17,17 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   final AppDataService _appData = AppDataService();
 
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await _appData.loadScheduledWorkouts();
+    if (mounted) setState(() {});
+  }
+
   List<double> _getWeeklyChartData() {
     List<double> weeklyVolumes = List.filled(7, 0.0);
     final today = DateTime.now();
@@ -52,11 +63,13 @@ class _StatsScreenState extends State<StatsScreen> {
         valueListenable: _appData.statistics,
         builder: (context, stats, child) {
           final weeklyVolumes = _getWeeklyChartData();
-          final double maxVolume = weeklyVolumes.isNotEmpty ? weeklyVolumes.reduce(max) : 0.0;
+          final double maxVolume =
+              weeklyVolumes.isNotEmpty ? weeklyVolumes.reduce(max) : 0.0;
           final double chartMaxY = maxVolume == 0 ? 100.0 : (maxVolume * 1.2);
 
           final totalVolume = stats['totalVolume'] ?? 0.0;
-          final formattedVolume = NumberFormat("#,##0", "en_US").format(totalVolume);
+          final formattedVolume =
+              NumberFormat("#,##0", "en_US").format(totalVolume);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
@@ -67,78 +80,115 @@ class _StatsScreenState extends State<StatsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Total Volume", style: TextStyle(fontSize: 18, color: Colors.white)),
+                      const Text("Total Volume",
+                          style: TextStyle(fontSize: 18, color: Colors.white)),
                       const SizedBox(height: 8),
-                      Text("$formattedVolume kg", style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: primaryColor)),
+                      Text("$formattedVolume kg",
+                          style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor)),
                       const SizedBox(height: 4),
-                      const Text("all time", style: TextStyle(color: secondaryTextColor)),
+                      const Text("all time",
+                          style: TextStyle(color: secondaryTextColor)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
                 AppCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Weekly Progress", style: TextStyle(fontSize: 18, color: Colors.white)),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        height: 200,
-                        child: BarChart(
-                          BarChartData(
-                            alignment: BarChartAlignment.spaceAround,
-                            maxY: chartMaxY,
-                            barTouchData: BarTouchData(enabled: false),
-                            titlesData: FlTitlesData(
-                              leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (value, meta) {
-                                  if (value == 0) return const Text('');
-                                  return Text(value.toInt().toString(), style: const TextStyle(color: secondaryTextColor, fontSize: 10));
-                              })),
-                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-
-                              bottomTitles: AxisTitles(
+                    child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Weekly Progress",
+                        style: TextStyle(fontSize: 18, color: Colors.white)),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 200,
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: chartMaxY,
+                          barTouchData: BarTouchData(enabled: false),
+                          titlesData: FlTitlesData(
+                            leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 30,
-                                  getTitlesWidget: (value, meta) {
-                                    const style = TextStyle(color: secondaryTextColor, fontSize: 12);
-                                    String text;
-                                    switch (value.toInt()) {
-                                      case 0: text = 'Mon'; break;
-                                      case 1: text = 'Tue'; break;
-                                      case 2: text = 'Wed'; break;
-                                      case 3: text = 'Thu'; break;
-                                      case 4: text = 'Fri'; break;
-                                      case 5: text = 'Sat'; break;
-                                      case 6: text = 'Sun'; break;
-                                      default: text = ''; break;
-                                    }
-                                    return SideTitleWidget(axisSide: meta.axisSide, space: 4, child: Text(text, style: style));
-                                  },
-                                ),
+                                    showTitles: true,
+                                    reservedSize: 40,
+                                    getTitlesWidget: (value, meta) {
+                                      if (value == 0) return const Text('');
+                                      return Text(value.toInt().toString(),
+                                          style: const TextStyle(
+                                              color: secondaryTextColor,
+                                              fontSize: 10));
+                                    })),
+                            topTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+                            rightTitles: const AxisTitles(
+                                sideTitles: SideTitles(showTitles: false)),
+
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 30,
+                                getTitlesWidget: (value, meta) {
+                                  const style = TextStyle(
+                                      color: secondaryTextColor, fontSize: 12);
+                                  String text;
+                                  switch (value.toInt()) {
+                                    case 0:
+                                      text = 'Mon';
+                                      break;
+                                    case 1:
+                                      text = 'Tue';
+                                      break;
+                                    case 2:
+                                      text = 'Wed';
+                                      break;
+                                    case 3:
+                                      text = 'Thu';
+                                      break;
+                                    case 4:
+                                      text = 'Fri';
+                                      break;
+                                    case 5:
+                                      text = 'Sat';
+                                      break;
+                                    case 6:
+                                      text = 'Sun';
+                                      break;
+                                    default:
+                                      text = '';
+                                      break;
+                                  }
+                                  return SideTitleWidget(
+                                      axisSide: meta.axisSide,
+                                      space: 4,
+                                      child: Text(text, style: style));
+                                },
                               ),
-                              // ================================
                             ),
-                            borderData: FlBorderData(show: false),
-                            gridData: const FlGridData(show: false),
-                            barGroups: List.generate(7, (index) => BarChartGroupData(
-                              x: index,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: weeklyVolumes[index].toDouble(),
-                                  color: primaryColor,
-                                  width: 16,
-                                  borderRadius: BorderRadius.circular(4),
-                                )
-                              ],
-                            )),
+                            // ================================
                           ),
+                          borderData: FlBorderData(show: false),
+                          gridData: const FlGridData(show: false),
+                          barGroups: List.generate(
+                              7,
+                              (index) => BarChartGroupData(
+                                    x: index,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: weeklyVolumes[index].toDouble(),
+                                        color: primaryColor,
+                                        width: 16,
+                                        borderRadius: BorderRadius.circular(4),
+                                      )
+                                    ],
+                                  )),
                         ),
                       ),
-                    ],
-                  )
-                ),
+                    ),
+                  ],
+                )),
               ],
             ),
           );

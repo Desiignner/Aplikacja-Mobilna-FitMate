@@ -5,6 +5,7 @@ import 'package:fitmate/widgets/app_card.dart';
 import 'package:fitmate/widgets/dashboard/activity_calendar_widget.dart';
 import 'package:fitmate/widgets/dashboard/goals_card.dart';
 import 'package:fitmate/widgets/dashboard/physical_activity_card.dart';
+import 'package:fitmate/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -19,7 +20,7 @@ class DashboardScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
+              _buildHeader(context),
               const SizedBox(height: 24),
               const PhysicalActivityCard(),
               const SizedBox(height: 24),
@@ -40,15 +41,27 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text('Dashboard', style: TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: Colors.white)),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-          child: const Icon(Icons.person, color: mainBackgroundColor),
+        const Text('Dashboard',
+            style: TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+                color: Colors.white)),
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+                color: primaryColor, shape: BoxShape.circle),
+            child: const Icon(Icons.person, color: mainBackgroundColor),
+          ),
         ),
       ],
     );
@@ -60,7 +73,12 @@ class DashboardScreen extends StatelessWidget {
       valueListenable: appData.lastCompletedWorkout,
       builder: (context, lastWorkout, child) {
         if (lastWorkout == null) {
-          return const AppCard(child: SizedBox(height: 150, child: Center(child: Text("No workouts completed yet.", style: TextStyle(color: secondaryTextColor)))));
+          return const AppCard(
+              child: SizedBox(
+                  height: 150,
+                  child: Center(
+                      child: Text("No workouts completed yet.",
+                          style: TextStyle(color: secondaryTextColor)))));
         }
         return AppCard(
           child: Column(
@@ -68,9 +86,12 @@ class DashboardScreen extends StatelessWidget {
             children: [
               const Text('Last Workout', style: TextStyle(color: Colors.white)),
               const SizedBox(height: 12),
-              Text(lastWorkout.planName, style: const TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+              Text(lastWorkout.planName,
+                  style: const TextStyle(
+                      color: primaryColor, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Completed at ${lastWorkout.time}', style: const TextStyle(color: secondaryTextColor)),
+              Text('Completed at ${lastWorkout.time}',
+                  style: const TextStyle(color: secondaryTextColor)),
             ],
           ),
         );

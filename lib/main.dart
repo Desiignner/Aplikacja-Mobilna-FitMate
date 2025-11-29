@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:fitmate/screens/main_screen.dart';
+import 'package:fitmate/screens/login_screen.dart';
 import 'package:fitmate/utils/app_colors.dart';
 
 void main() {
@@ -26,7 +26,7 @@ class FitmateApp extends StatelessWidget {
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
       ),
-      home: const MainScreen(),
+      home: const LoginScreen(),
     );
   }
 }

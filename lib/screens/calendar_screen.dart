@@ -26,6 +26,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.initState();
     _focusedDay = DateTime.now();
     _selectedDay = _focusedDay;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await _appData.loadScheduledWorkouts();
+    if (mounted) setState(() {});
   }
 
   List<ScheduledWorkout> _getWorkoutsForDay(DateTime day) {
@@ -47,50 +53,61 @@ class _CalendarScreenState extends State<CalendarScreen> {
               itemBuilder: (context, index) {
                 final plan = _appData.plans[index];
                 return ListTile(
-                  title: Text(plan.name, style: const TextStyle(color: Colors.white)),
-                  onTap: () {
-                    setState(() {
-                      _appData.scheduleWorkout(plan, date);
-                    });
+                  title: Text(plan.name,
+                      style: const TextStyle(color: Colors.white)),
+                  onTap: () async {
                     Navigator.of(context).pop();
+                    await _appData.scheduleWorkout(plan, date);
+                    if (mounted) setState(() {});
                   },
                 );
               },
             ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel', style: TextStyle(color: Colors.white)))],
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child:
+                    const Text('Cancel', style: TextStyle(color: Colors.white)))
+          ],
         );
       },
     );
   }
 
-
-  void _deleteWorkout(ScheduledWorkout workout) {
-    setState(() => _appData.deleteScheduledWorkout(workout));
+  void _deleteWorkout(ScheduledWorkout workout) async {
+    await _appData.deleteScheduledWorkout(workout);
+    if (mounted) setState(() {});
   }
 
-  void _markWorkoutAsCompleted(ScheduledWorkout workout) {
-    setState(() => _appData.markAsCompleted(workout, context));
+  void _markWorkoutAsCompleted(ScheduledWorkout workout) async {
+    await _appData.completeWorkout(workout, context);
+    if (mounted) setState(() {});
   }
 
   void _startWorkout(ScheduledWorkout workout) async {
     final bool? workoutFinished = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (context) => ActiveWorkoutScreen(workout: workout)),
+      MaterialPageRoute(
+          builder: (context) => ActiveWorkoutScreen(workout: workout)),
     );
     if (workoutFinished == true && mounted) {
-      setState(() {
-        _appData.completeWorkout(workout, context);
-      });
+      await _appData.completeWorkout(workout, context);
+      if (mounted) setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final workoutsForSelectedDay = _getWorkoutsForDay(_selectedDay ?? _focusedDay);
+    final workoutsForSelectedDay =
+        _getWorkoutsForDay(_selectedDay ?? _focusedDay);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Activity Calendar'),
-        actions: [IconButton(icon: const Icon(Icons.add, color: primaryColor), onPressed: () => _showScheduleDialog(_selectedDay ?? _focusedDay))],
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.add, color: primaryColor),
+              onPressed: () => _showScheduleDialog(_selectedDay ?? _focusedDay))
+        ],
       ),
       body: Column(
         children: [
@@ -133,15 +150,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 border: Border.all(color: secondaryTextColor),
                 borderRadius: BorderRadius.circular(12.0),
               ),
-              titleTextStyle: const TextStyle(fontSize: 18.0, color: Colors.white, fontWeight: FontWeight.bold),
-              leftChevronIcon: const Icon(Icons.chevron_left, color: Colors.white),
-              rightChevronIcon: const Icon(Icons.chevron_right, color: Colors.white),
+              titleTextStyle: const TextStyle(
+                  fontSize: 18.0,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold),
+              leftChevronIcon:
+                  const Icon(Icons.chevron_left, color: Colors.white),
+              rightChevronIcon:
+                  const Icon(Icons.chevron_right, color: Colors.white),
             ),
             calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(color: todayBackgroundColor, shape: BoxShape.circle),
+              todayDecoration: BoxDecoration(
+                  color: todayBackgroundColor, shape: BoxShape.circle),
               todayTextStyle: const TextStyle(color: todayTextColor),
-              selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-              markerDecoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              selectedDecoration:
+                  BoxDecoration(color: primaryColor, shape: BoxShape.circle),
+              markerDecoration: const BoxDecoration(
+                  color: Colors.white, shape: BoxShape.circle),
               markerMargin: const EdgeInsets.only(top: 0),
               markersAlignment: Alignment.topCenter,
             ),
@@ -167,7 +192,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 }
-
 
 class _ActivityTile extends StatelessWidget {
   final ScheduledWorkout workout;
@@ -195,13 +219,12 @@ class _ActivityTile extends StatelessWidget {
     final bool isCompleted = workout.status == WorkoutStatus.completed;
     final icon = isCompleted ? Icons.check_circle : Icons.pending_actions;
     final color = isCompleted ? primaryColor : secondaryTextColor;
-    
+
     return Card(
       color: cardBackgroundColor,
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-
           if (isCompleted) {
             _editOrViewWorkout(context);
           } else {
@@ -209,7 +232,8 @@ class _ActivityTile extends StatelessWidget {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.only(left: 16.0, right: 8.0, top: 8.0, bottom: 8.0),
+          padding: const EdgeInsets.only(
+              left: 16.0, right: 8.0, top: 8.0, bottom: 8.0),
           child: Row(
             children: [
               Icon(icon, color: color, size: 30),
@@ -218,9 +242,17 @@ class _ActivityTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(workout.planName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(workout.planName,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text(isCompleted ? 'Completed at ${workout.time}' : 'Planned', style: TextStyle(color: color, fontSize: 14)),
+                    Text(
+                        isCompleted
+                            ? 'Completed at ${workout.time}'
+                            : 'Planned',
+                        style: TextStyle(color: color, fontSize: 14)),
                   ],
                 ),
               ),
@@ -231,13 +263,15 @@ class _ActivityTile extends StatelessWidget {
                   // Przycisk "Oznacz jako ukończony" (tylko dla zaplanowanych)
                   if (!isCompleted)
                     IconButton(
-                      icon: const Icon(Icons.check_circle_outline, color: Colors.white70),
+                      icon: const Icon(Icons.check_circle_outline,
+                          color: Colors.white70),
                       tooltip: 'Mark as Completed',
                       onPressed: onMarkAsCompleted,
                     ),
                   // Przycisk "Usuń"
                   IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Colors.redAccent),
                     tooltip: 'Delete',
                     onPressed: onDelete,
                   ),
