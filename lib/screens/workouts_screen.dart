@@ -1,5 +1,4 @@
 import 'package:fitmate/models/plan.dart';
-import 'package:fitmate/models/scheduled_workout.dart';
 import 'package:fitmate/screens/active_workout_screen.dart';
 import 'package:fitmate/screens/create_plan_screen.dart';
 import 'package:fitmate/services/app_data_service.dart';

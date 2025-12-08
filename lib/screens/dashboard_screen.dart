@@ -1,10 +1,11 @@
+import 'package:intl/intl.dart';
 import 'package:fitmate/models/scheduled_workout.dart';
 import 'package:fitmate/services/app_data_service.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:fitmate/widgets/app_card.dart';
 import 'package:fitmate/widgets/dashboard/activity_calendar_widget.dart';
 import 'package:fitmate/widgets/dashboard/goals_card.dart';
-import 'package:fitmate/widgets/dashboard/physical_activity_card.dart';
+import 'package:fitmate/widgets/dashboard/quote_card.dart';
 import 'package:fitmate/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -22,7 +23,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               _buildHeader(context),
               const SizedBox(height: 24),
-              const PhysicalActivityCard(),
+              const QuoteCard(),
               const SizedBox(height: 24),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +91,8 @@ class DashboardScreen extends StatelessWidget {
                   style: const TextStyle(
                       color: primaryColor, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Completed at ${lastWorkout.time}',
+              Text(
+                  'Completed ${DateFormat('MMM d').format(lastWorkout.date)} at ${lastWorkout.time}',
                   style: const TextStyle(color: secondaryTextColor)),
             ],
           ),

@@ -9,7 +9,6 @@ class ActivityCalendarWidget extends StatelessWidget {
   const ActivityCalendarWidget({super.key});
 
   @override
-  @override
   Widget build(BuildContext context) {
     final AppDataService appData = AppDataService();
     final now = DateTime.now();
@@ -85,7 +84,7 @@ class ActivityCalendarWidget extends StatelessWidget {
               alignment: Alignment.center,
               decoration: isToday
                   ? BoxDecoration(
-                      color: primaryColor.withOpacity(0.3),
+                      color: primaryColor.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     )
                   : null,

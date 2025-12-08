@@ -54,7 +54,7 @@ class ApiClient {
     final uri = Uri.parse(_baseUrl + path);
     return _request(() {
       if (body != null) {
-        print('POST Request Body: ${json.encode(body)}');
+        debugPrint('POST Request Body: ${json.encode(body)}');
       }
       return http
           .post(uri,
@@ -69,7 +69,7 @@ class ApiClient {
     final uri = Uri.parse(_baseUrl + path);
     return _request(() {
       if (body != null) {
-        print('PUT Request Body: ${json.encode(body)}');
+        debugPrint('PUT Request Body: ${json.encode(body)}');
       }
       return http
           .put(uri,
@@ -139,7 +139,7 @@ class ApiClient {
         return true;
       }
     } catch (e) {
-      print('Error refreshing token: $e');
+      debugPrint('Error refreshing token: $e');
     }
     return false;
   }

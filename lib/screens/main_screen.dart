@@ -2,6 +2,7 @@ import 'package:fitmate/screens/calendar_screen.dart';
 import 'package:fitmate/screens/dashboard_screen.dart';
 import 'package:fitmate/screens/stats_screen.dart';
 import 'package:fitmate/screens/workouts_screen.dart';
+import 'package:fitmate/services/app_data_service.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 
@@ -15,11 +16,21 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    final appData = AppDataService();
+    appData.loadScheduledWorkouts();
+    appData.loadPlans();
+    appData.loadUserMetrics();
+    appData.loadGoals();
+  }
+
   static const List<Widget> _widgetOptions = <Widget>[
-    const DashboardScreen(),
-    const StatsScreen(),
-    const CalendarScreen(),
-    const WorkoutsScreen(),
+    DashboardScreen(),
+    StatsScreen(),
+    CalendarScreen(),
+    WorkoutsScreen(),
   ];
 
   void _onItemTapped(int index) {

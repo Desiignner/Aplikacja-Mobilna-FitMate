@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 // Auth
 class AuthResponse {
   final String? accessToken;
@@ -324,7 +322,6 @@ class PlanVsActualItemDto {
   }
 }
 
-
 // Body Metrics
 class CreateBodyMeasurementDto {
   final double weightKg;
@@ -555,7 +552,9 @@ class FriendRequestDto {
       toName: json['toName'],
       status: json['status'],
       createdAtUtc: DateTime.parse(json['createdAtUtc']),
-      respondedAtUtc: json['respondedAtUtc'] != null ? DateTime.parse(json['respondedAtUtc']) : null,
+      respondedAtUtc: json['respondedAtUtc'] != null
+          ? DateTime.parse(json['respondedAtUtc'])
+          : null,
     );
   }
 
@@ -668,7 +667,9 @@ class FriendWorkoutSessionDto {
       fullName: json['fullName'],
       planName: json['planName'],
       startedAtUtc: DateTime.parse(json['startedAtUtc']),
-      completedAtUtc: json['completedAtUtc'] != null ? DateTime.parse(json['completedAtUtc']) : null,
+      completedAtUtc: json['completedAtUtc'] != null
+          ? DateTime.parse(json['completedAtUtc'])
+          : null,
       durationSec: json['durationSec'],
       status: json['status'],
     );
@@ -689,7 +690,6 @@ class FriendWorkoutSessionDto {
     };
   }
 }
-
 
 // Plans
 class SetDto {
@@ -849,7 +849,9 @@ class SharedPlanDto {
       sharedWithName: json['sharedWithName'],
       sharedAtUtc: DateTime.parse(json['sharedAtUtc']),
       status: json['status'],
-      respondedAtUtc: json['respondedAtUtc'] != null ? DateTime.parse(json['respondedAtUtc']) : null,
+      respondedAtUtc: json['respondedAtUtc'] != null
+          ? DateTime.parse(json['respondedAtUtc'])
+          : null,
     );
   }
 
@@ -1181,7 +1183,9 @@ class WorkoutSessionDto {
       id: json['id'],
       scheduledId: json['scheduledId'],
       startedAtUtc: DateTime.parse(json['startedAtUtc']),
-      completedAtUtc: json['completedAtUtc'] != null ? DateTime.parse(json['completedAtUtc']) : null,
+      completedAtUtc: json['completedAtUtc'] != null
+          ? DateTime.parse(json['completedAtUtc'])
+          : null,
       durationSec: json['durationSec'],
       status: json['status'],
       sessionNotes: json['sessionNotes'],
@@ -1267,7 +1271,8 @@ class UserProfileDto {
       userName: json['userName'],
       fullName: json['fullName'],
       email: json['email'],
-      roles: (json['roles'] as List<dynamic>?)?.map((e) => e as String).toList(),
+      roles:
+          (json['roles'] as List<dynamic>?)?.map((e) => e as String).toList(),
     );
   }
 
@@ -1366,4 +1371,3 @@ class UserDto {
     };
   }
 }
-

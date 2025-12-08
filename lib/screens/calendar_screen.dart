@@ -1,11 +1,9 @@
-import 'package:fitmate/models/plan.dart';
 import 'package:fitmate/models/scheduled_workout.dart';
 import 'package:fitmate/screens/active_workout_screen.dart';
 import 'package:fitmate/screens/workout_summary_screen.dart';
 import 'package:fitmate/services/app_data_service.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -159,15 +157,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
               rightChevronIcon:
                   const Icon(Icons.chevron_right, color: Colors.white),
             ),
-            calendarStyle: CalendarStyle(
+            calendarStyle: const CalendarStyle(
               todayDecoration: BoxDecoration(
                   color: todayBackgroundColor, shape: BoxShape.circle),
-              todayTextStyle: const TextStyle(color: todayTextColor),
+              todayTextStyle: TextStyle(color: todayTextColor),
               selectedDecoration:
                   BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-              markerDecoration: const BoxDecoration(
-                  color: Colors.white, shape: BoxShape.circle),
-              markerMargin: const EdgeInsets.only(top: 0),
+              markerDecoration:
+                  BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+              markerMargin: EdgeInsets.only(top: 0),
               markersAlignment: Alignment.topCenter,
             ),
           ),

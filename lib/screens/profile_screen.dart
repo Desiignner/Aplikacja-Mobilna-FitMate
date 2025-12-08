@@ -94,6 +94,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               await _appData.saveUserMetrics(newMetrics);
               if (mounted) {
                 setState(() {});
+              }
+              if (context.mounted) {
                 Navigator.pop(context);
               }
             },

@@ -89,7 +89,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               fontWeight: FontWeight.bold,
                               color: primaryColor)),
                       const SizedBox(height: 4),
-                      const Text("all time",
+                      const Text("this month",
                           style: TextStyle(color: secondaryTextColor)),
                     ],
                   ),

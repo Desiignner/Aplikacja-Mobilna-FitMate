@@ -1,3 +1,4 @@
+import 'package:fitmate/api/api_client.dart';
 import 'package:fitmate/screens/main_screen.dart';
 import 'package:fitmate/screens/register_screen.dart';
 import 'package:fitmate/services/app_data_service.dart';
@@ -40,7 +41,11 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         if (mounted) {
           setState(() {
-            _errorMessage = e.toString().replaceAll('Exception: ', '');
+            if (e is ApiException && e.statusCode == 400) {
+              _errorMessage = 'Invalid username or password';
+            } else {
+              _errorMessage = e.toString().replaceAll('Exception: ', '');
+            }
           });
         }
       } finally {
