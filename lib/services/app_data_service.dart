@@ -3,6 +3,10 @@ import 'package:fitmate/api/api_client.dart';
 import 'package:fitmate/models/plan.dart';
 import 'package:fitmate/models/scheduled_workout.dart';
 import 'package:fitmate/models/goal.dart';
+import 'package:fitmate/models/friend.dart';
+import 'package:fitmate/models/friend_request.dart';
+import 'package:fitmate/models/shared_plan.dart';
+import 'package:fitmate/api/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -33,6 +37,16 @@ class AppDataService {
   final ValueNotifier<List<Goal>> goals = ValueNotifier([
     Goal(id: '1', title: 'Sleep 8h', emoji: '💤', isCompleted: false),
   ]);
+
+  // Friends
+  final ValueNotifier<List<Friend>> friends = ValueNotifier([]);
+  final ValueNotifier<List<FriendRequest>> incomingRequests = ValueNotifier([]);
+  final ValueNotifier<List<FriendRequest>> outgoingRequests = ValueNotifier([]);
+
+  final ValueNotifier<List<SharedPlan>> sharedPlans = ValueNotifier([]);
+  final ValueNotifier<List<SharedPlan>> sharedByMePlans = ValueNotifier([]);
+  final ValueNotifier<List<SharedPlan>> pendingSharedPlans = ValueNotifier([]);
+  final ValueNotifier<List<SharedPlan>> sentSharedPlans = ValueNotifier([]);
 
   void addGoal(String title, String emoji) {
     final newGoal = Goal(
@@ -145,6 +159,17 @@ class AppDataService {
         debugPrint('Error loading plans: $e');
       }
     }
+  }
+
+  Future<Plan?> getPlan(String planId) async {
+    if (apiClient.isAuthenticated) {
+      try {
+        return await apiClient.getPlan(planId);
+      } catch (e) {
+        debugPrint('Error loading plan $planId: $e');
+      }
+    }
+    return null;
   }
 
   Future<void> addPlan(Plan plan) async {
@@ -439,5 +464,151 @@ class AppDataService {
           DateTime.utc(workout.date.year, workout.date.month, workout.date.day);
       return workoutDay == normalizedDay;
     }).toList();
+  }
+
+  // Friends Methods
+  Future<void> loadFriendsAndRequests() async {
+    if (!apiClient.isAuthenticated) return;
+    try {
+      friends.value = await apiClient.getFriends();
+      incomingRequests.value = await apiClient.getIncomingRequests();
+      outgoingRequests.value = await apiClient.getOutgoingRequests();
+    } catch (e) {
+      debugPrint('Error loading friends data: $e');
+    }
+  }
+
+  Future<void> sendFriendRequest(String username) async {
+    await apiClient.sendFriendRequest(username);
+    await loadFriendsAndRequests();
+  }
+
+  Future<void> respondToFriendRequest(String requestId, bool accept) async {
+    await apiClient.respondToFriendRequest(requestId, accept);
+    await loadFriendsAndRequests();
+  }
+
+  Future<void> removeFriend(String friendUserId) async {
+    await apiClient.removeFriend(friendUserId);
+    await loadFriendsAndRequests();
+  }
+
+  // Body Measurements
+  final ValueNotifier<List<BodyMeasurementDto>> bodyMeasurements =
+      ValueNotifier([]);
+  final ValueNotifier<BodyMetricsStatsDto?> bodyMetricsStats =
+      ValueNotifier(null);
+  final ValueNotifier<List<BodyMetricsProgressDto>> bodyMetricsProgress =
+      ValueNotifier([]);
+  final ValueNotifier<double?> targetWeight = ValueNotifier(null);
+
+  Future<void> loadBodyMeasurements() async {
+    if (!apiClient.isAuthenticated) return;
+    try {
+      await Future.wait([
+        _loadMeasurementsList(),
+        _loadStats(),
+        _loadProgress(),
+        _loadTargetWeight(),
+      ]);
+      _updateProfileMetrics();
+    } catch (e) {
+      debugPrint('Error loading body measurements data: $e');
+    }
+  }
+
+  Future<void> _loadMeasurementsList() async {
+    try {
+      bodyMeasurements.value = await apiClient.getBodyMeasurements();
+    } catch (e) {
+      debugPrint('Error list: $e');
+    }
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      bodyMetricsStats.value = await apiClient.getBodyMetricsStats();
+    } catch (e) {
+      debugPrint('Error stats: $e');
+    }
+  }
+
+  Future<void> _loadProgress() async {
+    try {
+      bodyMetricsProgress.value = await apiClient.getBodyMetricsProgress();
+    } catch (e) {
+      debugPrint('Error progress: $e');
+    }
+  }
+
+  Future<void> _loadTargetWeight() async {
+    if (apiClient.username != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final val = prefs.getDouble('target_weight_${apiClient.username}');
+      targetWeight.value = val;
+    }
+  }
+
+  Future<void> saveTargetWeight(double weight) async {
+    if (apiClient.username != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('target_weight_${apiClient.username}', weight);
+      targetWeight.value = weight;
+    }
+  }
+
+  void _updateProfileMetrics() {
+    if (bodyMeasurements.value.isNotEmpty) {
+      bodyMeasurements.value
+          .sort((a, b) => b.measuredAtUtc.compareTo(a.measuredAtUtc));
+      final latest = bodyMeasurements.value.first;
+
+      userMetrics.value = {
+        'height': '${latest.heightCm} cm',
+        'weight': '${latest.weightKg} kg',
+        'bodyFat': latest.bodyFatPercentage != null
+            ? '${latest.bodyFatPercentage}%'
+            : '-',
+        'bmi': latest.bmi.toStringAsFixed(1),
+      };
+    }
+  }
+
+  Future<void> saveMeasurement(CreateBodyMeasurementDto measurement) async {
+    await apiClient.saveBodyMeasurement(measurement);
+    await loadBodyMeasurements();
+  }
+
+  Future<void> deleteMeasurement(String id) async {
+    await apiClient.deleteBodyMeasurement(id);
+    await loadBodyMeasurements();
+  }
+
+  // Shared Plans Methods
+  Future<void> loadSharedPlans() async {
+    if (!apiClient.isAuthenticated) return;
+    try {
+      sharedPlans.value = await apiClient.getSharedPlansWithMe();
+      sharedByMePlans.value = await apiClient.getSharedPlansByMe();
+      pendingSharedPlans.value = await apiClient.getPendingSharedPlans();
+      sentSharedPlans.value = await apiClient.getSentPendingSharedPlans();
+    } catch (e) {
+      debugPrint('Error loading shared plans: $e');
+    }
+  }
+
+  Future<void> sharePlan(String planId, String friendId) async {
+    await apiClient.sharePlan(planId, friendId);
+    await loadSharedPlans();
+  }
+
+  Future<void> respondToSharedPlan(String sharedPlanId, bool accept) async {
+    await apiClient.respondToSharedPlan(sharedPlanId, accept);
+    await loadSharedPlans();
+  }
+
+  Future<void> removeSharedPlan(String sharedPlanId) async {
+    await apiClient.removeSharedPlan(sharedPlanId);
+    await loadSharedPlans();
   }
 }

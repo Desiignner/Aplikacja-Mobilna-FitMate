@@ -24,6 +24,7 @@ class _MainScreenState extends State<MainScreen> {
     appData.loadPlans();
     appData.loadUserMetrics();
     appData.loadGoals();
+    appData.loadFriendsAndRequests();
   }
 
   static const List<Widget> _widgetOptions = <Widget>[

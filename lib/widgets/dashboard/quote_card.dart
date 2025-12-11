@@ -25,14 +25,14 @@ class _QuoteCardState extends State<QuoteCard> {
   Future<void> _fetchQuote() async {
     try {
       final response =
-          await http.get(Uri.parse('https://zenquotes.io/api/today'));
+          await http.get(Uri.parse('https://dummyjson.com/quotes/random'));
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
+        final Map<String, dynamic> data = json.decode(response.body);
         if (data.isNotEmpty) {
           setState(() {
-            _quote = data[0]['q'];
-            _author = data[0]['a'];
+            _quote = data['quote'];
+            _author = data['author'];
             _isLoading = false;
           });
         }

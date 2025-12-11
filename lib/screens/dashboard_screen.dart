@@ -6,7 +6,9 @@ import 'package:fitmate/widgets/app_card.dart';
 import 'package:fitmate/widgets/dashboard/activity_calendar_widget.dart';
 import 'package:fitmate/widgets/dashboard/goals_card.dart';
 import 'package:fitmate/widgets/dashboard/quote_card.dart';
+
 import 'package:fitmate/screens/profile_screen.dart';
+import 'package:fitmate/screens/friends_screen.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -51,18 +53,38 @@ class DashboardScreen extends StatelessWidget {
                 fontSize: 34,
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
-        GestureDetector(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-                color: primaryColor, shape: BoxShape.circle),
-            child: const Icon(Icons.person, color: mainBackgroundColor),
-          ),
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (context) => const FriendsScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                    color: cardBackgroundColor, shape: BoxShape.circle),
+                child: const Icon(Icons.people, color: Colors.white),
+              ),
+            ),
+            const SizedBox(width: 16),
+            GestureDetector(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (context) => const ProfileScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                    color: primaryColor, shape: BoxShape.circle),
+                child: const Icon(Icons.person, color: mainBackgroundColor),
+              ),
+            ),
+          ],
         ),
       ],
     );

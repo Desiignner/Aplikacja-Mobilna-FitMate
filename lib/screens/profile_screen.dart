@@ -1,6 +1,7 @@
 import 'package:fitmate/services/app_data_service.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:fitmate/widgets/app_card.dart';
+import 'package:fitmate/screens/body_measurements_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -20,91 +21,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadMetrics() async {
+    await _appData.loadBodyMeasurements(); // Ensure we have latest
     await _appData.loadUserMetrics();
     if (mounted) setState(() {});
-  }
-
-  void _showBodyMetricsDialog() {
-    final metrics = _appData.userMetrics.value;
-    final heightController =
-        TextEditingController(text: metrics['height']?.replaceAll(' cm', ''));
-    final weightController =
-        TextEditingController(text: metrics['weight']?.replaceAll(' kg', ''));
-    final bodyFatController =
-        TextEditingController(text: metrics['bodyFat']?.replaceAll('%', ''));
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: cardBackgroundColor,
-        title: const Text('Update Body Metrics',
-            style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: heightController,
-              decoration: const InputDecoration(
-                  labelText: 'Height (cm)',
-                  labelStyle: TextStyle(color: secondaryTextColor)),
-              style: const TextStyle(color: Colors.white),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: weightController,
-              decoration: const InputDecoration(
-                  labelText: 'Weight (kg)',
-                  labelStyle: TextStyle(color: secondaryTextColor)),
-              style: const TextStyle(color: Colors.white),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: bodyFatController,
-              decoration: const InputDecoration(
-                  labelText: 'Body Fat (%)',
-                  labelStyle: TextStyle(color: secondaryTextColor)),
-              style: const TextStyle(color: Colors.white),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              String bmi = '-';
-              try {
-                final h = double.parse(heightController.text) / 100;
-                final w = double.parse(weightController.text);
-                bmi = (w / (h * h)).toStringAsFixed(1);
-              } catch (e) {
-                // Ignore error
-              }
-
-              final newMetrics = {
-                'height': '${heightController.text} cm',
-                'weight': '${weightController.text} kg',
-                'bodyFat': '${bodyFatController.text}%',
-                'bmi': bmi,
-              };
-
-              await _appData.saveUserMetrics(newMetrics);
-              if (mounted) {
-                setState(() {});
-              }
-              if (context.mounted) {
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
-            child: const Text('Save', style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -137,7 +56,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit, color: primaryColor, size: 20),
-                  onPressed: _showBodyMetricsDialog,
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const BodyMeasurementsScreen()));
+                  },
                 ),
               ],
             ),
