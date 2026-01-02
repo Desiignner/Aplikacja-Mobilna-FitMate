@@ -256,18 +256,19 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                     color: Colors.white, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Expanded(
-              child: ValueListenableBuilder<List<BodyMetricsProgressDto>>(
-                valueListenable: _appData.bodyMetricsProgress,
-                builder: (context, progress, _) {
-                  if (progress.isEmpty) {
+              child: ValueListenableBuilder<List<BodyMeasurementDto>>(
+                valueListenable: _appData.bodyMeasurements,
+                builder: (context, measurements, _) {
+                  if (measurements.isEmpty) {
                     return const Center(
                         child: Text('No data',
                             style: TextStyle(color: secondaryTextColor)));
                   }
 
                   // Sort by date asc for chart
-                  final sorted = List<BodyMetricsProgressDto>.from(progress)
-                    ..sort((a, b) => a.date.compareTo(b.date));
+                  final sorted = List<BodyMeasurementDto>.from(measurements)
+                    ..sort(
+                        (a, b) => a.measuredAtUtc.compareTo(b.measuredAtUtc));
 
                   return LineChart(
                     LineChartData(
@@ -285,7 +286,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                               .entries
                               .map((e) =>
                                   FlSpot(e.key.toDouble(), e.value.weightKg))
-                              .toList(),
+                              .toList(), // Use weightKg from BodyMeasurementDto
                           isCurved: true,
                           color: primaryColor,
                           dotData: const FlDotData(show: true),
@@ -379,7 +380,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
           .toList(),
       isCurved: true,
       color: color,
-      dotData: const FlDotData(show: false),
+      dotData: const FlDotData(show: true),
     );
   }
 
@@ -607,6 +608,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                     DataColumn(label: Text('Fat %')),
                     DataColumn(label: Text('Chest')),
                     DataColumn(label: Text('Waist')),
+                    DataColumn(label: Text('Hips')),
+                    DataColumn(label: Text('Biceps')),
+                    DataColumn(label: Text('Thighs')),
                     DataColumn(label: Text('Actions')),
                   ],
                   rows: data.map((m) {
@@ -618,6 +622,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                       DataCell(Text(m.bodyFatPercentage?.toString() ?? '-')),
                       DataCell(Text(m.chestCm?.toString() ?? '-')),
                       DataCell(Text(m.waistCm?.toString() ?? '-')),
+                      DataCell(Text(m.hipsCm?.toString() ?? '-')),
+                      DataCell(Text(m.bicepsCm?.toString() ?? '-')),
+                      DataCell(Text(m.thighsCm?.toString() ?? '-')),
                       DataCell(IconButton(
                         icon: const Icon(Icons.delete_outline,
                             color: Colors.redAccent, size: 20),

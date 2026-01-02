@@ -1,3 +1,4 @@
+import 'package:fitmate/api/api_client.dart';
 import 'package:fitmate/models/friend.dart';
 import 'package:fitmate/models/friend_request.dart';
 import 'package:fitmate/services/app_data_service.dart';
@@ -281,9 +282,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
         );
       }
     } catch (e) {
+      String message = 'Failed to send request: $e';
+      if (e is ApiException && e.statusCode == 404) {
+        message = 'User does not exist';
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send request: $e')),
+          SnackBar(content: Text(message)),
         );
       }
     }

@@ -10,6 +10,7 @@ import 'package:fitmate/api/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
+import 'package:fitmate/services/notification_service.dart';
 import 'package:intl/intl.dart';
 
 class AppDataService {
@@ -185,6 +186,30 @@ class AppDataService {
     }
   }
 
+  Future<void> updatePlan(Plan plan) async {
+    if (apiClient.isAuthenticated) {
+      try {
+        await apiClient.updatePlan(plan);
+      } catch (e) {
+        debugPrint('Error updating plan: $e');
+      }
+    }
+
+    // Update local state (plans)
+    final index = plans.indexWhere((p) => p.id == plan.id);
+    if (index != -1) {
+      plans[index] = plan;
+    }
+
+    // Update local state (scheduled workouts)
+    for (var workout in scheduledWorkouts) {
+      if (workout.planId == plan.id) {
+        workout.planName = plan.name;
+        workout.exercises = plan.exercises;
+      }
+    }
+  }
+
   Future<void> deletePlan(Plan plan) async {
     if (apiClient.isAuthenticated) {
       try {
@@ -200,20 +225,6 @@ class AppDataService {
     }
   }
 
-  void updatePlan(Plan updatedPlan) {
-    // API update not implemented in client yet, assuming local for now or add to client
-    final index = plans.indexWhere((p) => p.id == updatedPlan.id);
-    if (index != -1) {
-      plans[index] = updatedPlan;
-      for (var workout in scheduledWorkouts) {
-        if (workout.planId == updatedPlan.id) {
-          workout.planName = updatedPlan.name;
-          workout.exercises = updatedPlan.exercises;
-        }
-      }
-    }
-  }
-
   Future<void> loadScheduledWorkouts() async {
     if (apiClient.isAuthenticated) {
       try {
@@ -224,6 +235,17 @@ class AppDataService {
         _calculateStatistics();
 
         _recalculateLastCompletedWorkout();
+
+        // Check for notifications
+        final now = DateTime.now();
+        final hasWorkoutToday = scheduledWorkouts.any((w) {
+          return w.date.year == now.year &&
+              w.date.month == now.month &&
+              w.date.day == now.day &&
+              w.status != WorkoutStatus.completed;
+        });
+        await NotificationService()
+            .checkAndShowWorkoutReminder(hasWorkoutToday);
       } catch (e) {
         debugPrint('Error loading scheduled workouts: $e');
       }

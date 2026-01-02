@@ -13,18 +13,34 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final appData = AppDataService();
-    appData.loadScheduledWorkouts();
+    appData.loadScheduledWorkouts(); // Triggers check
     appData.loadPlans();
     appData.loadUserMetrics();
     appData.loadGoals();
     appData.loadFriendsAndRequests();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App came to foreground
+      // Reload workouts to check for today's reminders (and sync data)
+      AppDataService().loadScheduledWorkouts();
+    }
   }
 
   static const List<Widget> _widgetOptions = <Widget>[

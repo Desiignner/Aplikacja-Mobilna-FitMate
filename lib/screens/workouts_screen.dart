@@ -31,12 +31,36 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     if (mounted) setState(() {});
   }
 
-  void _navigateAndAddPlan() async {
-    final newPlan = await Navigator.of(context).push<Plan>(
+  Future<void> _navigateAndAddPlan() async {
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const CreatePlanScreen()),
     );
-    if (newPlan != null) {
-      await _appData.addPlan(newPlan);
+    if (result is Plan) {
+      await _appData.addPlan(result);
+      setState(() {});
+    }
+  }
+
+  Future<void> _editPlan(Plan plan) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (context) => CreatePlanScreen(planToEdit: plan)),
+    );
+
+    // If result is Plan, it means it was saved.
+    // If null, user cancelled.
+    if (result is Plan) {
+      // The Plan object is already mutated in CreatePlanScreen's save method
+      // if passed by reference, but we might want to ensure it's saved/reloaded in AppDataService
+      // For now, assuming in-memory update is sufficient for local list,
+      // but let's force a reload or update call if needed.
+      await _appData.updatePlan(
+          result); // We need to ensure this method exists or addPlan handles updates?
+      // Creating updatePlan in AppDataService might be safer.
+      // Checking AppDataService shows addPlan just adds to list.
+      // We should verify if we need a specific update method.
+      // For mock/local, modifying the object reference might reflect directly,
+      // but explicitly handling it is better.
       setState(() {});
     }
   }
@@ -70,6 +94,34 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
               await _appData.addPlan(plan);
               setState(() {});
             }),
+      ),
+    );
+  }
+
+  void _confirmAndDeletePlan(Plan plan) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardBackgroundColor,
+        title:
+            const Text('Delete Plan?', style: TextStyle(color: Colors.white)),
+        content: Text(
+            'Are you sure you want to delete "${plan.name}"? This cannot be undone.',
+            style: const TextStyle(color: secondaryTextColor)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel', style: TextStyle(color: primaryColor)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deletePlan(plan);
+            },
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
       ),
     );
   }
@@ -146,28 +198,26 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
       itemCount: allPlans.length,
       itemBuilder: (context, index) {
         final plan = allPlans[index];
-        return Dismissible(
-          key: ValueKey(plan.id),
-          direction: DismissDirection.endToStart,
-          onDismissed: (direction) => _deletePlan(plan),
-          background: Container(
-            color: Colors.redAccent,
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            margin: const EdgeInsets.only(bottom: 16),
-            child: const Icon(Icons.delete, color: Colors.white),
-          ),
-          child: _WorkoutPlanCard(
-            plan: plan,
-            onStart: () => _startWorkout(plan),
-            onShare: () => _sharePlan(plan),
-          ),
+        return _WorkoutPlanCard(
+          plan: plan,
+          onStart: () => _startWorkout(plan),
+          onShare: () => _sharePlan(plan),
+          onEdit: () => _editPlan(plan),
+          onDelete: () => _confirmAndDeletePlan(plan),
         );
       },
     );
   }
 
   Widget _buildSharedPlansTab() {
+// ... (omitted shared plans code for brevity, it remains unchanged) ...
+// But I need to hit the _WorkoutPlanCard definition too.
+// I will split this into two ReplacementChunks if needed or use MultiReplace.
+// Actually, I can just replace the usage in _buildMyPlansTab first,
+// wait, I need to update the Class definition of _WorkoutPlanCard as well.
+// I will use replace_file_content for the usage first, but I need to be careful about the range.
+// Let's use multi_replace to do both usage and definition.
+
     return AnimatedBuilder(
       animation: Listenable.merge([
         _appData.sharedPlans,
@@ -279,9 +329,15 @@ class _WorkoutPlanCard extends StatelessWidget {
   final Plan plan;
   final VoidCallback onStart;
   final VoidCallback onShare;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _WorkoutPlanCard(
-      {required this.plan, required this.onStart, required this.onShare});
+      {required this.plan,
+      required this.onStart,
+      required this.onShare,
+      required this.onEdit,
+      required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -307,9 +363,22 @@ class _WorkoutPlanCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: Colors.white)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.share, color: primaryColor),
-                  onPressed: onShare,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: primaryColor),
+                      onPressed: onEdit,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.share, color: primaryColor),
+                      onPressed: onShare,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.redAccent),
+                      onPressed: onDelete,
+                    ),
+                  ],
                 ),
               ],
             ),

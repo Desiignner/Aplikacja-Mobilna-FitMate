@@ -23,9 +23,11 @@ class ApiClient {
 
   String? _username;
   String? _email;
+  String? _userId;
 
   String? get username => _username;
   String? get email => _email;
+  String? get userId => _userId;
 
   void setTokens(String? accessToken, String? refreshToken) {
     _accessToken = accessToken;
@@ -50,7 +52,8 @@ class ApiClient {
       if (payloadMap.containsKey('email')) {
         _email = payloadMap['email'];
       } else if (payloadMap.containsKey(
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress')) {
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+      )) {
         _email = payloadMap[
             'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'];
       }
@@ -61,9 +64,22 @@ class ApiClient {
       } else if (payloadMap.containsKey('name')) {
         _username = payloadMap['name'];
       } else if (payloadMap.containsKey(
-          'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name')) {
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
+      )) {
         _username = payloadMap[
             'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'];
+      }
+
+      // Extract User ID
+      if (payloadMap.containsKey('sub')) {
+        _userId = payloadMap['sub'];
+      } else if (payloadMap.containsKey('nameid')) {
+        _userId = payloadMap['nameid'];
+      } else if (payloadMap.containsKey(
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
+      )) {
+        _userId = payloadMap[
+            'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
       }
 
       debugPrint('Extracted user: $_username, email: $_email');
@@ -74,8 +90,10 @@ class ApiClient {
 
   bool get isAuthenticated => _accessToken != null;
 
-  Map<String, String> _createHeaders(
-      {bool authorized = true, bool isJson = true}) {
+  Map<String, String> _createHeaders({
+    bool authorized = true,
+    bool isJson = true,
+  }) {
     final Map<String, String> headers = {};
     if (isJson) {
       headers['Content-Type'] = 'application/json';
@@ -86,72 +104,109 @@ class ApiClient {
     return headers;
   }
 
-  Future<http.Response> getData(String path,
-      {Map<String, dynamic>? queryParams, bool authorized = true}) async {
+  Future<http.Response> getData(
+    String path, {
+    Map<String, dynamic>? queryParams,
+    bool authorized = true,
+  }) async {
     final uri = Uri.parse(_baseUrl + path).replace(
-        queryParameters:
-            queryParams?.map((key, value) => MapEntry(key, value.toString())));
+      queryParameters: queryParams?.map(
+        (key, value) => MapEntry(key, value.toString()),
+      ),
+    );
     return _request(
-        () => http
-            .get(uri,
-                headers: _createHeaders(authorized: authorized, isJson: false))
-            .timeout(const Duration(seconds: 10)),
-        authorized: authorized);
+      () => http
+          .get(
+            uri,
+            headers: _createHeaders(authorized: authorized, isJson: false),
+          )
+          .timeout(const Duration(seconds: 10)),
+      authorized: authorized,
+    );
   }
 
-  Future<http.Response> post(String path,
-      {dynamic body, bool authorized = true}) async {
+  Future<http.Response> post(
+    String path, {
+    dynamic body,
+    bool authorized = true,
+  }) async {
     final uri = Uri.parse(_baseUrl + path);
     return _request(() {
       if (body != null) {
         debugPrint('POST Request Body: ${json.encode(body)}');
       }
       return http
-          .post(uri,
-              headers: _createHeaders(authorized: authorized),
-              body: json.encode(body))
+          .post(
+            uri,
+            headers: _createHeaders(authorized: authorized),
+            body: json.encode(body),
+          )
           .timeout(const Duration(seconds: 10));
     }, authorized: authorized);
   }
 
-  Future<http.Response> put(String path,
-      {dynamic body, bool authorized = true}) async {
+  Future<http.Response> put(
+    String path, {
+    dynamic body,
+    bool authorized = true,
+  }) async {
     final uri = Uri.parse(_baseUrl + path);
     return _request(() {
       if (body != null) {
         debugPrint('PUT Request Body: ${json.encode(body)}');
       }
       return http
-          .put(uri,
-              headers: _createHeaders(authorized: authorized),
-              body: json.encode(body))
+          .put(
+            uri,
+            headers: _createHeaders(authorized: authorized),
+            body: json.encode(body),
+          )
           .timeout(const Duration(seconds: 10));
     }, authorized: authorized);
   }
 
-  Future<http.Response> patch(String path,
-      {dynamic body, bool authorized = true}) async {
+  Future<http.Response> patch(
+    String path, {
+    dynamic body,
+    bool authorized = true,
+  }) async {
     final uri = Uri.parse(_baseUrl + path);
     return _request(
-        () => http
-            .patch(uri,
-                headers: _createHeaders(authorized: authorized),
-                body: json.encode(body))
-            .timeout(const Duration(seconds: 10)),
-        authorized: authorized);
+      () => http
+          .patch(
+            uri,
+            headers: _createHeaders(authorized: authorized),
+            body: json.encode(body),
+          )
+          .timeout(const Duration(seconds: 10)),
+      authorized: authorized,
+    );
   }
 
-  Future<http.Response> delete(String path, {bool authorized = true}) async {
+  Future<http.Response> delete(
+    String path, {
+    dynamic body,
+    bool authorized = true,
+  }) async {
     final uri = Uri.parse(_baseUrl + path);
-    return _request(
-        () => http
-            .delete(uri, headers: _createHeaders(authorized: authorized))
-            .timeout(const Duration(seconds: 10)),
-        authorized: authorized);
+    return _request(() {
+      if (body != null) {
+        debugPrint('DELETE Request Body: ${json.encode(body)}');
+      }
+      return http
+          .delete(
+            uri,
+            headers: _createHeaders(authorized: authorized),
+            body: body != null ? json.encode(body) : null,
+          )
+          .timeout(const Duration(seconds: 10));
+    }, authorized: authorized);
   }
 
-  Future<http.Response> _request(Future<http.Response> Function() request,
-      {required bool authorized}) async {
+  Future<http.Response> _request(
+    Future<http.Response> Function() request, {
+    required bool authorized,
+  }) async {
     try {
       http.Response response = await request();
       if (response.statusCode == 401 && authorized) {
@@ -164,11 +219,15 @@ class ApiClient {
       return _handleResponse(response);
     } on TimeoutException {
       throw ApiException(
-          ProblemDetails(detail: "Connection timed out", status: 408), 408);
+        ProblemDetails(detail: "Connection timed out", status: 408),
+        408,
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
       throw ApiException(
-          ProblemDetails(detail: "Network error: $e", status: 503), 503);
+        ProblemDetails(detail: "Network error: $e", status: 503),
+        503,
+      );
     }
   }
 
@@ -198,49 +257,68 @@ class ApiClient {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return response;
     } else if (response.statusCode == 400) {
-      throw ApiException(ProblemDetails.fromJson(json.decode(response.body)),
-          response.statusCode);
+      throw ApiException(
+        ProblemDetails.fromJson(json.decode(response.body)),
+        response.statusCode,
+      );
     } else if (response.statusCode == 401) {
-      throw ApiException(ProblemDetails(detail: "Unauthorized", status: 401),
-          response.statusCode);
+      throw ApiException(
+        ProblemDetails(detail: "Unauthorized", status: 401),
+        response.statusCode,
+      );
     } else if (response.statusCode == 403) {
-      throw ApiException(ProblemDetails(detail: "Forbidden", status: 403),
-          response.statusCode);
+      throw ApiException(
+        ProblemDetails(detail: "Forbidden", status: 403),
+        response.statusCode,
+      );
     } else if (response.statusCode == 404) {
-      throw ApiException(ProblemDetails(detail: "Not Found", status: 404),
-          response.statusCode);
+      throw ApiException(
+        ProblemDetails(detail: "Not Found", status: 404),
+        response.statusCode,
+      );
     } else if (response.statusCode >= 500) {
       throw ApiException(
-          ProblemDetails(detail: "Server Error", status: response.statusCode),
-          response.statusCode);
+        ProblemDetails(detail: "Server Error", status: response.statusCode),
+        response.statusCode,
+      );
     } else {
       throw ApiException(
-          ProblemDetails(
-              detail: "An unexpected error occurred",
-              status: response.statusCode),
-          response.statusCode);
+        ProblemDetails(
+          detail: "An unexpected error occurred",
+          status: response.statusCode,
+        ),
+        response.statusCode,
+      );
     }
   }
 
   // Auth
   Future<void> login(String username, String password) async {
-    final response = await post('/api/auth/login',
-        body: {'userNameOrEmail': username, 'password': password},
-        authorized: false);
+    final response = await post(
+      '/api/auth/login',
+      body: {'userNameOrEmail': username, 'password': password},
+      authorized: false,
+    );
     final data = json.decode(response.body);
     setTokens(data['accessToken'], data['refreshToken']);
   }
 
   Future<void> register(
-      String email, String username, String password, String fullName) async {
-    final response = await post('/api/auth/register',
-        body: {
-          'email': email,
-          'username': username,
-          'password': password,
-          'fullName': fullName
-        },
-        authorized: false);
+    String email,
+    String username,
+    String password,
+    String fullName,
+  ) async {
+    final response = await post(
+      '/api/auth/register',
+      body: {
+        'email': email,
+        'username': username,
+        'password': password,
+        'fullName': fullName,
+      },
+      authorized: false,
+    );
     final data = json.decode(response.body);
     setTokens(data['accessToken'], data['refreshToken']);
   }
@@ -250,6 +328,29 @@ class ApiClient {
     _refreshToken = null;
     _username = null;
     _email = null;
+  }
+
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    await post(
+      '/api/userprofile/change-password',
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmPassword': confirmPassword,
+      },
+    );
+  }
+
+  Future<void> deleteAccount(String password) async {
+    // According to docs: DELETE /api/userprofile with body { "password": "..." }
+    await delete(
+      '/api/userprofile',
+      body: {'password': password},
+    );
   }
 
   // Plans
@@ -277,6 +378,10 @@ class ApiClient {
   Future<Plan> createPlan(Plan plan) async {
     final response = await post('/api/plans', body: plan.toJson());
     return Plan.fromJson(json.decode(response.body));
+  }
+
+  Future<void> updatePlan(Plan plan) async {
+    await put('/api/plans/${plan.id}', body: plan.toJson());
   }
 
   Future<void> deletePlan(String planId) async {
@@ -374,8 +479,10 @@ class ApiClient {
 
   Future<void> respondToFriendRequest(String requestId, bool accept) async {
     // Assuming body { "accept": true/false }
-    await post('/api/friends/requests/$requestId/respond',
-        body: {'accept': accept});
+    await post(
+      '/api/friends/requests/$requestId/respond',
+      body: {'accept': accept},
+    );
   }
 
   Future<void> removeFriend(String friendUserId) async {
@@ -389,8 +496,9 @@ class ApiClient {
 
   Future<List<SharedPlan>> getSharedPlansWithMe() async {
     try {
-      final response =
-          await getData('/api/plans/shared/history?scope=received');
+      final response = await getData(
+        '/api/plans/shared/history?scope=received',
+      );
       final List<dynamic> data = json.decode(response.body);
       return data.map((json) => SharedPlan.fromJson(json)).toList();
     } on ApiException catch (e) {
@@ -433,8 +541,10 @@ class ApiClient {
   }
 
   Future<void> respondToSharedPlan(String sharedPlanId, bool accept) async {
-    await post('/api/plans/shared/$sharedPlanId/respond',
-        body: {'accept': accept});
+    await post(
+      '/api/plans/shared/$sharedPlanId/respond',
+      body: {'accept': accept},
+    );
   }
 
   Future<void> removeSharedPlan(String sharedPlanId) async {
@@ -475,9 +585,12 @@ class ApiClient {
   }
 
   Future<BodyMeasurementDto> saveBodyMeasurement(
-      CreateBodyMeasurementDto measurement) async {
-    final response =
-        await post('/api/body-metrics', body: measurement.toJson());
+    CreateBodyMeasurementDto measurement,
+  ) async {
+    final response = await post(
+      '/api/body-metrics',
+      body: measurement.toJson(),
+    );
     return BodyMeasurementDto.fromJson(json.decode(response.body));
   }
 
@@ -512,13 +625,14 @@ class ProblemDetails {
   final String? instance;
   final Map<String, dynamic>? errors;
 
-  ProblemDetails(
-      {this.type,
-      this.title,
-      this.status,
-      this.detail,
-      this.instance,
-      this.errors});
+  ProblemDetails({
+    this.type,
+    this.title,
+    this.status,
+    this.detail,
+    this.instance,
+    this.errors,
+  });
 
   factory ProblemDetails.fromJson(Map<String, dynamic> json) {
     return ProblemDetails(

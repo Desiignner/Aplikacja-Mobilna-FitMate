@@ -59,7 +59,15 @@ class _CreatePlanScreenState extends State<CreatePlanScreen> {
   }
 
   void _addSet(int exerciseIndex) {
-    setState(() => _exercises[exerciseIndex].sets.add(SetDetails()));
+    setState(() {
+      final sets = _exercises[exerciseIndex].sets;
+      if (sets.isNotEmpty) {
+        final lastSet = sets.last;
+        sets.add(SetDetails(reps: lastSet.reps, weight: lastSet.weight));
+      } else {
+        sets.add(SetDetails());
+      }
+    });
   }
 
   void _removeSet(int exerciseIndex, int setIndex) {
@@ -191,6 +199,34 @@ class _ExerciseCard extends StatefulWidget {
 class __ExerciseCardState extends State<_ExerciseCard> {
   bool _setsVisible = true;
 
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardBackgroundColor,
+        title: const Text('Delete Exercise?',
+            style: TextStyle(color: Colors.white)),
+        content: const Text(
+            'Are you sure you want to delete this exercise? This cannot be undone.',
+            style: TextStyle(color: secondaryTextColor)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel', style: TextStyle(color: primaryColor)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              widget.onDelete();
+            },
+            child:
+                const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -217,6 +253,10 @@ class __ExerciseCardState extends State<_ExerciseCard> {
                         keyboardType: TextInputType.number,
                         onSaved: (val) => widget.exercise.rest =
                             int.tryParse(val ?? '60') ?? 60)),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                  onPressed: _confirmDelete,
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -229,9 +269,10 @@ class __ExerciseCardState extends State<_ExerciseCard> {
                     child: Text(_setsVisible ? 'Hide sets' : 'Show sets',
                         style: const TextStyle(color: secondaryTextColor))),
                 TextButton(
-                    onPressed: widget.onDelete,
-                    child: const Text('Delete',
-                        style: TextStyle(color: Colors.redAccent))),
+                    onPressed: () =>
+                        setState(() => _setsVisible = !_setsVisible),
+                    child: Text(_setsVisible ? 'Hide sets' : 'Show sets',
+                        style: const TextStyle(color: secondaryTextColor))),
               ],
             ),
             if (_setsVisible) ...[

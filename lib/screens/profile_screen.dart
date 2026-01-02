@@ -1,7 +1,10 @@
 import 'package:fitmate/services/app_data_service.dart';
+import 'package:fitmate/services/notification_service.dart';
 import 'package:fitmate/utils/app_colors.dart';
 import 'package:fitmate/widgets/app_card.dart';
 import 'package:fitmate/screens/body_measurements_screen.dart';
+import 'package:fitmate/screens/help_support_screen.dart';
+import 'package:fitmate/screens/privacy_security_screen.dart';
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,16 +17,35 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final AppDataService _appData = AppDataService();
 
+  bool _notificationsEnabled = false;
+
   @override
   void initState() {
     super.initState();
     _loadMetrics();
+    _loadNotificationSettings();
   }
 
   Future<void> _loadMetrics() async {
     await _appData.loadBodyMeasurements(); // Ensure we have latest
     await _appData.loadUserMetrics();
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadNotificationSettings() async {
+    final enabled = await NotificationService().areNotificationsEnabled;
+    if (mounted) setState(() => _notificationsEnabled = enabled);
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    await NotificationService().setNotificationsEnabled(value);
+    setState(() => _notificationsEnabled = value);
+    // Request permission if enabling for the first time on Android 13+ / iOS
+    // keeping it simple for now as per minimal viable impl
+    if (value) {
+      await NotificationService().init();
+      // Test check immediately? No, user wants it "if workout scheduled for today"
+    }
   }
 
   @override
@@ -85,12 +107,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            _buildNotificationOption(),
             _buildSettingsOption(
-                icon: Icons.notifications_outlined, title: 'Notifications'),
+              icon: Icons.lock_outline,
+              title: 'Privacy & Security',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const PrivacySecurityScreen()),
+              ),
+            ),
             _buildSettingsOption(
-                icon: Icons.lock_outline, title: 'Privacy & Security'),
-            _buildSettingsOption(
-                icon: Icons.help_outline, title: 'Help & Support'),
+              icon: Icons.help_outline,
+              title: 'Help & Support',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const HelpSupportScreen()),
+              ),
+            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -107,6 +142,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationOption() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: cardBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SwitchListTile(
+        secondary:
+            const Icon(Icons.notifications_outlined, color: primaryColor),
+        title:
+            const Text('Notifications', style: TextStyle(color: Colors.white)),
+        value: _notificationsEnabled,
+        onChanged: _toggleNotifications,
+        activeColor: primaryColor,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       ),
     );
   }
@@ -187,7 +242,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingsOption({required IconData icon, required String title}) {
+  Widget _buildSettingsOption(
+      {required IconData icon,
+      required String title,
+      required VoidCallback onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -198,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: Icon(icon, color: primaryColor),
         title: Text(title, style: const TextStyle(color: Colors.white)),
         trailing: const Icon(Icons.chevron_right, color: secondaryTextColor),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
