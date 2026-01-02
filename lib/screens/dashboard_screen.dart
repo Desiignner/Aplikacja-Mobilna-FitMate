@@ -45,6 +45,7 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final appData = AppDataService();
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -62,11 +63,46 @@ class DashboardScreen extends StatelessWidget {
                       builder: (context) => const FriendsScreen()),
                 );
               },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                    color: cardBackgroundColor, shape: BoxShape.circle),
-                child: const Icon(Icons.people, color: Colors.white),
+              child: ValueListenableBuilder(
+                valueListenable: appData.incomingRequests,
+                builder: (context, requests, child) {
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                            color: cardBackgroundColor, shape: BoxShape.circle),
+                        child: const Icon(Icons.people, color: Colors.white),
+                      ),
+                      if (requests.isNotEmpty)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            child: Text(
+                              '${requests.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(width: 16),

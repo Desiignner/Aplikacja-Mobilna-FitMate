@@ -133,23 +133,81 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     );
   }
 
+  void _confirmRemoveSharedPlan(SharedPlan plan) {
+    final isPending = plan.status == 'Pending';
+    final title = isPending ? 'Cancel Request?' : 'Stop Sharing?';
+    final content = isPending
+        ? 'Are you sure you want to cancel the invitation for "${plan.planName}"?'
+        : 'Are you sure you want to stop sharing "${plan.planName}"? The receiver will lose access to this link.';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: cardBackgroundColor,
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content:
+            Text(content, style: const TextStyle(color: secondaryTextColor)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Keep', style: TextStyle(color: primaryColor)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _appData.removeSharedPlan(plan.id);
+            },
+            child: Text(isPending ? 'Cancel Request' : 'Stop Sharing',
+                style: const TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _startSharedWorkout(SharedPlan sharedPlan) async {
     // Show simple loading feedback
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Loading plan...'), duration: Duration(seconds: 1)),
+        content: Text('Loading workout...'),
+        duration: Duration(seconds: 1),
+      ),
     );
 
-    final plan = await _appData.getPlan(sharedPlan.planId);
-    if (!mounted) return;
+    try {
+      // 1. Try to find local copy first (created upon acceptance)
+      // This is more reliable than fetching the original shared plan
+      Plan? plan;
+      try {
+        plan = _appData.plans.value
+            .firstWhere((p) => p.name == sharedPlan.planName);
+      } catch (_) {
+        // Not found locally
+      }
 
-    if (plan != null) {
+      // 2. If not found locally, try to "re-claim" and copy it now
+      // This is helpful if the initial copy during acceptance failed
+      if (plan == null) {
+        plan = await _appData.copySharedPlanToLocal(sharedPlan);
+      }
+
+      if (plan == null) {
+        throw Exception(
+            'Plan not found. The share might have expired or you might not have access.');
+      }
+
+      if (!mounted) return;
+
       _startWorkout(plan);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Failed to load plan. It might have been deleted.')),
-      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load plan: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -186,24 +244,28 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
   }
 
   Widget _buildMyPlansTab() {
-    final allPlans = _appData.plans;
-    if (allPlans.isEmpty) {
-      return const Center(
-          child: Text('No workout plans yet.\nPress "+" to add one!',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: secondaryTextColor, fontSize: 18)));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: allPlans.length,
-      itemBuilder: (context, index) {
-        final plan = allPlans[index];
-        return _WorkoutPlanCard(
-          plan: plan,
-          onStart: () => _startWorkout(plan),
-          onShare: () => _sharePlan(plan),
-          onEdit: () => _editPlan(plan),
-          onDelete: () => _confirmAndDeletePlan(plan),
+    return ValueListenableBuilder<List<Plan>>(
+      valueListenable: _appData.plans,
+      builder: (context, allPlans, child) {
+        if (allPlans.isEmpty) {
+          return const Center(
+              child: Text('No workout plans yet.\nPress "+" to add one!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: secondaryTextColor, fontSize: 18)));
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: allPlans.length,
+          itemBuilder: (context, index) {
+            final plan = allPlans[index];
+            return _WorkoutPlanCard(
+              plan: plan,
+              onStart: () => _startWorkout(plan),
+              onShare: () => _sharePlan(plan),
+              onEdit: () => _editPlan(plan),
+              onDelete: () => _confirmAndDeletePlan(plan),
+            );
+          },
         );
       },
     );
@@ -260,7 +322,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                         plan.receiverId, plan.receiverName, friendsList),
                     isPending: true, // Pending outgoing
                     isOutgoing: true,
-                    onRemove: () => _appData.removeSharedPlan(plan.id),
+                    onRemove: () => _confirmRemoveSharedPlan(plan),
                   )),
               ...outgoingAccepted.map((plan) => _SharedPlanItem(
                     sharedPlan: plan,
@@ -268,7 +330,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                         plan.receiverId, plan.receiverName, friendsList),
                     isPending: false,
                     isOutgoing: true,
-                    onRemove: () => _appData.removeSharedPlan(plan.id),
+                    onRemove: () => _confirmRemoveSharedPlan(plan),
                   )),
               const Divider(color: secondaryTextColor),
               const SizedBox(height: 10),
@@ -289,8 +351,36 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                         plan.senderId, plan.senderName, friendsList),
                     isPending: true,
                     isOutgoing: false,
-                    onRespond: (accept) =>
-                        _appData.respondToSharedPlan(plan.id, accept),
+                    onRespond: (accept) async {
+                      // Show loading
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) =>
+                            const Center(child: CircularProgressIndicator()),
+                      );
+                      try {
+                        await _appData.respondToSharedPlan(plan.id, accept);
+                        if (mounted) {
+                          Navigator.of(context).pop(); // Close loading
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(accept
+                                    ? 'Plan accepted and copied to My Plans!'
+                                    : 'Plan rejected.')),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          Navigator.of(context).pop(); // Close loading
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text('Failed: $e'),
+                                backgroundColor: Colors.redAccent),
+                          );
+                        }
+                      }
+                    },
                   )),
               // Accepted
               ...incomingAccepted.map((plan) => _SharedPlanItem(

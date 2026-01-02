@@ -376,7 +376,8 @@ class ApiClient {
   }
 
   Future<Plan> createPlan(Plan plan) async {
-    final response = await post('/api/plans', body: plan.toJson());
+    final response =
+        await post('/api/plans', body: plan.toJson(includeId: false));
     return Plan.fromJson(json.decode(response.body));
   }
 
@@ -549,6 +550,30 @@ class ApiClient {
 
   Future<void> removeSharedPlan(String sharedPlanId) async {
     await delete('/api/plans/shared/$sharedPlanId');
+  }
+
+  Future<Plan> getSharedPlanContent(String sharedPlanId) async {
+    final response = await getData('/api/plans/shared/$sharedPlanId');
+    final data = json.decode(response.body);
+
+    // If the API returns the SharedPlan wrap, extract the plan inside it
+    if (data['plan'] != null && data['plan'] is Map<String, dynamic>) {
+      debugPrint('Extracting nested plan from SharedPlan response');
+      return Plan.fromJson(data['plan']);
+    }
+
+    return Plan.fromJson(data);
+  }
+
+  Future<List<Plan>> getSharedWithMePlans() async {
+    try {
+      final response = await getData('/api/plans/shared-with-me');
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => Plan.fromJson(json)).toList();
+    } on ApiException catch (e) {
+      if (e.statusCode == 404) return [];
+      rethrow;
+    }
   }
 
   // Body Measurements

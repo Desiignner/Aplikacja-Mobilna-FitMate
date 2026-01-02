@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import 'package:fitmate/services/notification_service.dart';
+import 'package:fitmate/models/exercise.dart';
+import 'package:fitmate/models/set_details.dart';
 import 'package:intl/intl.dart';
 
 class AppDataService {
@@ -19,7 +21,7 @@ class AppDataService {
   factory AppDataService() => _instance;
 
   final ApiClient apiClient = ApiClient();
-  List<Plan> plans = [];
+  final ValueNotifier<List<Plan>> plans = ValueNotifier([]);
   List<ScheduledWorkout> scheduledWorkouts = [];
   final ValueNotifier<Map<String, double>> statistics =
       ValueNotifier({'totalVolume': 0.0});
@@ -112,7 +114,7 @@ class AppDataService {
   }
 
   void clearData() {
-    plans.clear();
+    plans.value = [];
     scheduledWorkouts.clear();
     statistics.value = {'totalVolume': 0.0};
     lastCompletedWorkout.value = null;
@@ -155,7 +157,7 @@ class AppDataService {
   Future<void> loadPlans() async {
     if (apiClient.isAuthenticated) {
       try {
-        plans = await apiClient.getPlans();
+        plans.value = await apiClient.getPlans();
       } catch (e) {
         debugPrint('Error loading plans: $e');
       }
@@ -165,6 +167,9 @@ class AppDataService {
   Future<Plan?> getPlan(String planId) async {
     if (apiClient.isAuthenticated) {
       try {
+        final localPlan = plans.value.where((p) => p.id == planId).firstOrNull;
+        if (localPlan != null) return localPlan;
+
         return await apiClient.getPlan(planId);
       } catch (e) {
         debugPrint('Error loading plan $planId: $e');
@@ -173,16 +178,20 @@ class AppDataService {
     return null;
   }
 
-  Future<void> addPlan(Plan plan) async {
+  Future<Plan> addPlan(Plan plan) async {
     if (apiClient.isAuthenticated) {
       try {
         final newPlan = await apiClient.createPlan(plan);
-        plans.add(newPlan);
+        plans.value = [...plans.value, newPlan];
+        return newPlan;
       } catch (e) {
         debugPrint('Error creating plan: $e');
+        // Fallback for offline if needed, but here we want to know why it fails
+        rethrow;
       }
     } else {
-      plans.add(plan);
+      plans.value = [...plans.value, plan];
+      return plan;
     }
   }
 
@@ -196,9 +205,11 @@ class AppDataService {
     }
 
     // Update local state (plans)
-    final index = plans.indexWhere((p) => p.id == plan.id);
+    final currentPlans = List<Plan>.from(plans.value);
+    final index = currentPlans.indexWhere((p) => p.id == plan.id);
     if (index != -1) {
-      plans[index] = plan;
+      currentPlans[index] = plan;
+      plans.value = currentPlans;
     }
 
     // Update local state (scheduled workouts)
@@ -214,13 +225,13 @@ class AppDataService {
     if (apiClient.isAuthenticated) {
       try {
         await apiClient.deletePlan(plan.id);
-        plans.removeWhere((p) => p.id == plan.id);
+        plans.value = plans.value.where((p) => p.id != plan.id).toList();
         scheduledWorkouts.removeWhere((sw) => sw.planId == plan.id);
       } catch (e) {
         debugPrint('Error deleting plan: $e');
       }
     } else {
-      plans.removeWhere((p) => p.id == plan.id);
+      plans.value = plans.value.where((p) => p.id != plan.id).toList();
       scheduledWorkouts.removeWhere((sw) => sw.planId == plan.id);
     }
   }
@@ -337,9 +348,10 @@ class AppDataService {
 
     if (workout.planId.isEmpty) {
       debugPrint('Error: planId is empty for workout ${workout.id}');
-      if (plans.isNotEmpty) {
-        final matchingPlan = plans.firstWhere((p) => p.name == workout.planName,
-            orElse: () => plans.first);
+      if (plans.value.isNotEmpty) {
+        final matchingPlan = plans.value.firstWhere(
+            (p) => p.name == workout.planName,
+            orElse: () => plans.value.first);
         workout.planId = matchingPlan.id;
         debugPrint(
             'Assigned planId ${workout.planId} from plan ${matchingPlan.name}');
@@ -625,8 +637,182 @@ class AppDataService {
   }
 
   Future<void> respondToSharedPlan(String sharedPlanId, bool accept) async {
-    await apiClient.respondToSharedPlan(sharedPlanId, accept);
-    await loadSharedPlans();
+    // 1. Capture the plan details *before* responding
+    SharedPlan? targetSharedPlan;
+    try {
+      // Look in pending list
+      targetSharedPlan = pendingSharedPlans.value
+          .where((sp) => sp.id == sharedPlanId)
+          .firstOrNull;
+
+      // Fallback: search in already accepted list (maybe it was already moved)
+      targetSharedPlan ??=
+          sharedPlans.value.where((sp) => sp.id == sharedPlanId).firstOrNull;
+    } catch (e) {
+      debugPrint('Error finding shared plan record: $e');
+    }
+
+    // 2. Respond to the API (Accept/Reject)
+    if (accept) {
+      try {
+        await apiClient.respondToSharedPlan(sharedPlanId, true);
+      } catch (e) {
+        debugPrint('Error responding to shared plan: $e');
+        rethrow;
+      }
+    } else {
+      await apiClient.respondToSharedPlan(sharedPlanId, false);
+    }
+
+    await loadSharedPlans(); // Refresh lists
+
+    // 3. If accepted, fetch and copy the plan to "My Plans"
+    if (accept) {
+      // Try to find it again in the accepted list to get any new data the server might have added
+      targetSharedPlan =
+          sharedPlans.value.where((sp) => sp.id == sharedPlanId).firstOrNull ??
+              targetSharedPlan;
+
+      if (targetSharedPlan != null) {
+        await copySharedPlanToLocal(targetSharedPlan);
+      }
+    }
+  }
+
+  Future<Plan?> copySharedPlanToLocal(SharedPlan sharedPlan) async {
+    // 1. Check if we already have it to avoid duplicates
+    final existing =
+        plans.value.where((p) => p.name == sharedPlan.planName).firstOrNull;
+    if (existing != null) {
+      debugPrint('Plan "${sharedPlan.planName}" already exists locally.');
+      return existing;
+    }
+
+    Plan? originalPlan;
+
+    // Strategy 0: SEARCH IN SHARED-WITH-ME (Most reliable for accepted plans)
+    if (sharedPlan.planId.isNotEmpty) {
+      try {
+        final sharedWithMe = await apiClient.getSharedWithMePlans();
+        originalPlan = sharedWithMe
+            .where(
+              (p) => p.id == sharedPlan.planId || p.name == sharedPlan.planName,
+            )
+            .firstOrNull;
+        if (originalPlan != null) {
+          debugPrint('Found content in getSharedWithMePlans()');
+        }
+      } catch (e) {
+        debugPrint('Not found in getSharedWithMePlans(): $e');
+      }
+    }
+
+    // Strategy 1: PRE-LOADED (Priority)
+    if (sharedPlan.planContent != null &&
+        sharedPlan.planContent!.exercises.isNotEmpty) {
+      originalPlan = sharedPlan.planContent;
+      debugPrint('Using pre-loaded plan content for "${sharedPlan.planName}"');
+    }
+
+    // Strategy 2: FETCH via share ID
+    if (originalPlan == null && sharedPlan.id.isNotEmpty) {
+      debugPrint(
+          'No pre-loaded content, attempting fetch for share ${sharedPlan.id}');
+      try {
+        originalPlan = await apiClient.getSharedPlanContent(sharedPlan.id);
+        debugPrint('Fetched via getSharedPlanContent(sharedPlan.id)');
+      } catch (e) {
+        debugPrint('getSharedPlanContent(shareId) failed: $e');
+      }
+    }
+
+    // Strategy 3: FETCH via original plan ID
+    if (originalPlan == null && sharedPlan.planId.isNotEmpty) {
+      try {
+        originalPlan = await apiClient.getPlan(sharedPlan.planId);
+        debugPrint('Fetched via getPlan(planId)');
+      } catch (e) {
+        debugPrint('getPlan(planId) failed: $e');
+      }
+    }
+
+    // Strategy 4: MISLABELED ID (trying planId as shareId)
+    if (originalPlan == null && sharedPlan.planId.isNotEmpty) {
+      try {
+        originalPlan = await apiClient.getSharedPlanContent(sharedPlan.planId);
+        debugPrint('Fetched via getSharedPlanContent(planId)');
+      } catch (e) {
+        debugPrint('getSharedPlanContent(planId) failed: $e');
+      }
+    }
+
+    // Strategy 5: DIRECT PLAN ENDPOINT (trying shareId as planId)
+    if (originalPlan == null && sharedPlan.id.isNotEmpty) {
+      try {
+        originalPlan = await apiClient.getPlan(sharedPlan.id);
+        debugPrint('Fetched via getPlan(shareId)');
+      } catch (e) {
+        debugPrint('getPlan(shareId) failed: $e');
+      }
+    }
+
+    // Strategy 6: ALTERNATIVE PATHS (guessing nested content)
+    if (originalPlan == null && sharedPlan.id.isNotEmpty) {
+      try {
+        final response =
+            await apiClient.getData('/api/plans/shared/${sharedPlan.id}/plan');
+        if (response.statusCode == 200) {
+          originalPlan = Plan.fromJson(json.decode(response.body));
+          debugPrint('Fetched via /api/plans/shared/id/plan');
+        }
+      } catch (e) {
+        debugPrint('Guess strategy failed: $e');
+      }
+    }
+
+    // Final Fallback: if we have pre-loaded content even with 0 exercises, maybe we can at least name it?
+    // But preferably we need exercises.
+    if (originalPlan == null && sharedPlan.planContent != null) {
+      originalPlan = sharedPlan.planContent;
+      debugPrint(
+          'Falling back to pre-loaded content (even if potentially incomplete)');
+    }
+
+    if (originalPlan == null) {
+      throw Exception(
+          'Plan content could not be found or downloaded from any known source.');
+    }
+
+    // Filter out dummy/empty plans that might have come from a bad parse
+    if (originalPlan.exercises.isEmpty && originalPlan.name == 'Unnamed Plan') {
+      throw Exception(
+          'Retrieved plan content appears to be empty or corrupted.');
+    }
+
+    debugPrint(
+        'Copying plan: ${originalPlan.name} with ${originalPlan.exercises.length} exercises');
+
+    // 2. Create a clean deep copy for local storage
+    final newPlan = Plan(
+      id: const Uuid().v4(),
+      name: originalPlan.name,
+      description: originalPlan.description,
+      type: originalPlan.type,
+      exercises: originalPlan.exercises.map((e) {
+        return Exercise(
+          name: e.name,
+          rest: e.rest,
+          sets: e.sets
+              .map((s) => SetDetails(reps: s.reps, weight: s.weight))
+              .toList(),
+        );
+      }).toList(),
+    );
+
+    // 3. Save to server/local and update state
+    final savedPlan = await addPlan(newPlan);
+    debugPrint('Shared plan copied successfully: ${savedPlan.name}');
+    return savedPlan;
   }
 
   Future<void> removeSharedPlan(String sharedPlanId) async {

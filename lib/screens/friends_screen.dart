@@ -283,8 +283,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
       }
     } catch (e) {
       String message = 'Failed to send request: $e';
-      if (e is ApiException && e.statusCode == 404) {
-        message = 'User does not exist';
+      if (e is ApiException) {
+        if (e.statusCode == 404) {
+          message = 'User does not exist';
+        } else if (e.statusCode == 400 &&
+            e.toString().toLowerCase().contains('already in progress')) {
+          message = 'Invitation pending'; // User friendly message
+        }
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

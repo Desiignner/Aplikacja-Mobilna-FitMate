@@ -26,7 +26,7 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
   }
 
   void _navigateToEditScreen() async {
-    final planToEdit = _appData.plans.firstWhere(
+    final planToEdit = _appData.plans.value.firstWhere(
       (p) => p.id == currentWorkout.planId,
       orElse: () => Plan(id: '', name: 'Not Found'),
     );

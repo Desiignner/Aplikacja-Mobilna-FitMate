@@ -13,7 +13,8 @@ class ActivityCalendarWidget extends StatelessWidget {
     final AppDataService appData = AppDataService();
     final now = DateTime.now();
     final firstDayOfMonth = DateTime(now.year, now.month, 1);
-    final weekdayOfFirstDay = firstDayOfMonth.weekday % 7;
+    // Adjusted for Monday start: Mon(1)->0, ..., Sun(7)->6
+    final weekdayOfFirstDay = (firstDayOfMonth.weekday - 1) % 7;
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
     final monthName = DateFormat.MMMM().format(now);
 
@@ -22,9 +23,18 @@ class ActivityCalendarWidget extends StatelessWidget {
           .statistics, // Rebuild when stats change (implies workouts changed)
       builder: (context, stats, child) {
         // Get completed workout days for current month
-        final workoutDays = appData.scheduledWorkouts
+        final completedDays = appData.scheduledWorkouts
             .where((w) =>
                 w.status == WorkoutStatus.completed &&
+                w.date.year == now.year &&
+                w.date.month == now.month)
+            .map((w) => w.date.day)
+            .toSet();
+
+        // Get planned workout days for current month (excluding those also completed)
+        final plannedDays = appData.scheduledWorkouts
+            .where((w) =>
+                w.status == WorkoutStatus.planned &&
                 w.date.year == now.year &&
                 w.date.month == now.month)
             .map((w) => w.date.day)
@@ -37,8 +47,8 @@ class ActivityCalendarWidget extends StatelessWidget {
               Text('$monthName Activity',
                   style: const TextStyle(color: Colors.white)),
               const SizedBox(height: 12),
-              _buildCalendarGrid(
-                  now, weekdayOfFirstDay, daysInMonth, workoutDays),
+              _buildCalendarGrid(now, weekdayOfFirstDay, daysInMonth,
+                  completedDays, plannedDays),
             ],
           ),
         );
@@ -47,8 +57,8 @@ class ActivityCalendarWidget extends StatelessWidget {
   }
 
   Widget _buildCalendarGrid(DateTime now, int weekdayOfFirstDay,
-      int daysInMonth, Set<int> workoutDays) {
-    const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      int daysInMonth, Set<int> completedDays, Set<int> plannedDays) {
+    const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S']; // Start on Monday
 
     return Column(
       children: [
@@ -73,32 +83,60 @@ class ActivityCalendarWidget extends StatelessWidget {
           itemBuilder: (context, index) {
             if (index < weekdayOfFirstDay) {
               return const SizedBox
-                  .shrink(); // Puste miejsce przed pierwszym dniem miesiąca
+                  .shrink(); // Empty space before the first day
             }
 
             final day = index - weekdayOfFirstDay + 1;
             final isToday = day == now.day;
-            final isWorkoutDay = workoutDays.contains(day);
+            final isCompleted = completedDays.contains(day);
+            final isPlanned = plannedDays.contains(day);
 
-            return Container(
-              alignment: Alignment.center,
-              decoration: isToday
-                  ? BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.3),
-                      shape: BoxShape.circle,
-                    )
-                  : null,
-              child: Text(
-                '$day',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight:
-                      isWorkoutDay ? FontWeight.bold : FontWeight.normal,
-                  decoration: isWorkoutDay
-                      ? TextDecoration.underline
-                      : TextDecoration.none,
-                  decorationColor: Colors.white,
-                  decorationThickness: 2,
+            // Determine base decoration based on status
+            BoxDecoration baseDecoration;
+            if (isCompleted) {
+              baseDecoration = BoxDecoration(
+                color: Colors.grey, // Grey for "Done"
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(6),
+              );
+            } else if (isPlanned) {
+              baseDecoration = BoxDecoration(
+                color: const Color(0xFF1B5E20), // Dark Green
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(6),
+              );
+            } else {
+              baseDecoration = const BoxDecoration(
+                shape: BoxShape.circle,
+              );
+            }
+
+            // Apply "Today" indicator (Red Border) on top
+            BoxDecoration decoration = baseDecoration;
+            if (isToday) {
+              decoration = baseDecoration.copyWith(
+                border: Border.all(color: Colors.red, width: 2),
+              );
+            }
+
+            return Center(
+              child: Container(
+                width: 30, // Fixed size for perfect centering
+                height: 30,
+                alignment: Alignment.center,
+                decoration: decoration,
+                child: Text(
+                  '$day',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    height:
+                        1.0, // Force line height to 1.0 for better centering
+                    fontWeight: (isCompleted || isPlanned || isToday)
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
                 ),
               ),
             );

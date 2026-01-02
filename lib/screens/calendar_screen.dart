@@ -47,9 +47,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             width: double.maxFinite,
             child: ListView.builder(
               shrinkWrap: true,
-              itemCount: _appData.plans.length,
+              itemCount: _appData.plans.value.length,
               itemBuilder: (context, index) {
-                final plan = _appData.plans[index];
+                final plan = _appData.plans.value[index];
                 return ListTile(
                   title: Text(plan.name,
                       style: const TextStyle(color: Colors.white)),
@@ -157,16 +157,82 @@ class _CalendarScreenState extends State<CalendarScreen> {
               rightChevronIcon:
                   const Icon(Icons.chevron_right, color: Colors.white),
             ),
-            calendarStyle: const CalendarStyle(
+            calendarStyle: CalendarStyle(
               todayDecoration: BoxDecoration(
-                  color: todayBackgroundColor, shape: BoxShape.circle),
-              todayTextStyle: TextStyle(color: todayTextColor),
-              selectedDecoration:
-                  BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-              markerDecoration:
-                  BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              markerMargin: EdgeInsets.only(top: 0),
+                color: Colors.transparent,
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(6),
+                border: const Border.fromBorderSide(
+                    BorderSide(color: Colors.red, width: 2)),
+              ),
+              todayTextStyle: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
+              selectedDecoration: BoxDecoration(
+                color: primaryColor,
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              markerDecoration: const BoxDecoration(
+                  color: Colors.white, shape: BoxShape.circle),
               markersAlignment: Alignment.topCenter,
+            ),
+            calendarBuilders: CalendarBuilders(
+              // Prioritized builder to override default day appearance
+              prioritizedBuilder: (context, day, focusedDay) {
+                final workouts = _getWorkoutsForDay(day);
+                final isCompleted =
+                    workouts.any((w) => w.status == WorkoutStatus.completed);
+                final hasWorkout = workouts.isNotEmpty;
+                final isToday = isSameDay(day, DateTime.now());
+                final isSelected = isSameDay(_selectedDay, day);
+
+                // Determine Fill Color
+                Color? fillColor;
+                if (isCompleted) {
+                  fillColor = Colors.grey; // Grey for "Done"
+                } else if (hasWorkout) {
+                  fillColor = const Color(0xFF1B5E20); // Dark Green
+                } else if (isSelected) {
+                  fillColor = primaryColor; // Default selection
+                }
+
+                // Determine Border
+                BoxBorder? border;
+                if (isToday) {
+                  border = Border.all(color: Colors.red, width: 2);
+                } else if (isSelected) {
+                  // White border implies selection
+                  border = Border.all(color: Colors.white, width: 2);
+                }
+
+                // If no style needed (not today, not selected, no workout), return null
+                if (fillColor == null && border == null && !isSelected) {
+                  return null;
+                }
+
+                return Center(
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: fillColor,
+                      shape: BoxShape.rectangle,
+                      borderRadius: BorderRadius.circular(6),
+                      border: border,
+                    ),
+                    child: Text(
+                      '${day.day}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 8.0),
