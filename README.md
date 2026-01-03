@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 📋 FitMate - Kompleksowa Dokumentacja
 
 **FitMate** to nowoczesna aplikacja mobilna stworzona w frameworku **Flutter**, służąca do kompleksowego zarządzania treningami, śledzenia postępów sylwetkowych oraz interakcji społecznościowej.
